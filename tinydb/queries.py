@@ -17,7 +17,7 @@ False
 
 import re
 import sys
-from typing import Mapping, Tuple, Callable, Any, Union, List, Optional
+from typing import Mapping, Tuple, Callable, Any, Union, List, Optional, NoReturn
 from .utils import freeze
 
 if sys.version_info >= (3, 8):
@@ -46,9 +46,13 @@ class QueryLike(Protocol):
     See also https://mypy.readthedocs.io/en/stable/protocols.html#simple-user-defined-protocols
     """
 
-    def __call__(self, value: Mapping) -> bool: ...
+    def __call__(self, value: Mapping) -> bool:
+        """Evaluate the query against the given value."""
+        ...
 
     def __hash__(self) -> int: ...
+
+    def is_cacheable(self) -> bool: ...
 
 
 class QueryInstance:
@@ -73,11 +77,6 @@ class QueryInstance:
 
     def __call__(self, value: Mapping) -> bool:
         """Evaluate the query against the given value."""
-        """Evaluate the query to check if it matches a specified value.
-
-        :param value: The value to check.
-        :return: Whether the value matches this query.
-        """
         return self._test(value)
 
     def __hash__(self) -> int:
@@ -90,6 +89,10 @@ class QueryInstance:
         if isinstance(other, QueryInstance):
             return self._hash == other._hash
         return False
+
+    def is_cacheable(self) -> bool:
+        """Check if the query is cacheable."""
+        return self._hash is not None
 
     def __and__(self, other: "QueryInstance") -> "QueryInstance":
         if self.is_cacheable() and other.is_cacheable():
@@ -145,7 +148,7 @@ class Query(QueryInstance):
     def __init__(self) -> None:
         self._path: Tuple[Union[str, Callable], ...] = ()
 
-        def notest(_: Any) -> Never:
+        def notest(_: Any) -> NoReturn:
             raise RuntimeError("Empty query was evaluated")
 
         super().__init__(test=notest, hashval=(None,))
@@ -191,7 +194,7 @@ class Query(QueryInstance):
 
         return QueryInstance(runner, hashval)
 
-    def __eq__(self, rhs: Any):
+    def __eq__(self, rhs: Any) -> QueryInstance:
         """Test a dict value for equality.
 
         >>> Query().f1 == 42
@@ -202,7 +205,7 @@ class Query(QueryInstance):
             lambda value: value == rhs, ("==", self._path, freeze(rhs))
         )
 
-    def __ne__(self, rhs: Any):
+    def __ne__(self, rhs: Any) -> QueryInstance:
         """Test a dict value for inequality.
 
         >>> Query().f1 != 42
