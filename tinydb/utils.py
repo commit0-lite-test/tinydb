@@ -64,7 +64,7 @@ class FrozenDict(dict):
     popitem = _immutable
 
 
-def freeze(obj):
+def freeze(obj: Any) -> Any:
     """Freeze an object by making it immutable and thus hashable."""
     if isinstance(obj, dict):
         return FrozenDict((k, freeze(v)) for k, v in obj.items())
