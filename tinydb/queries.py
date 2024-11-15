@@ -1,5 +1,4 @@
-"""
-Contains the querying interface.
+"""Contains the querying interface.
 
 Starting with :class:`~tinydb.queries.Query` you can construct complex
 queries:
@@ -15,19 +14,21 @@ True
 >>> q({'val': 1})
 False
 """
+
 import re
 import sys
 from typing import Mapping, Tuple, Callable, Any, Union, List, Optional
 from .utils import freeze
+
 if sys.version_info >= (3, 8):
     from typing import Protocol
 else:
     from typing_extensions import Protocol
-__all__ = ('Query', 'QueryLike', 'where')
+__all__ = ("Query", "QueryLike", "where")
+
 
 class QueryLike(Protocol):
-    """
-    A typing protocol that acts like a query.
+    """A typing protocol that acts like a query.
 
     Something that we use as a query must have two properties:
 
@@ -45,15 +46,13 @@ class QueryLike(Protocol):
     See also https://mypy.readthedocs.io/en/stable/protocols.html#simple-user-defined-protocols
     """
 
-    def __call__(self, value: Mapping) -> bool:
-        ...
+    def __call__(self, value: Mapping) -> bool: ...
 
-    def __hash__(self) -> int:
-        ...
+    def __hash__(self) -> int: ...
+
 
 class QueryInstance:
-    """
-    A query instance.
+    """A query instance.
 
     This is the object on which the actual query operations are performed. The
     :class:`~tinydb.queries.Query` class acts like a query builder and
@@ -73,8 +72,7 @@ class QueryInstance:
         self._hash = hashval
 
     def __call__(self, value: Mapping) -> bool:
-        """
-        Evaluate the query to check if it matches a specified value.
+        """Evaluate the query to check if it matches a specified value.
 
         :param value: The value to check.
         :return: Whether the value matches this query.
@@ -85,34 +83,34 @@ class QueryInstance:
         return hash(self._hash)
 
     def __repr__(self):
-        return 'QueryImpl{}'.format(self._hash)
+        return "QueryImpl{}".format(self._hash)
 
     def __eq__(self, other: object):
         if isinstance(other, QueryInstance):
             return self._hash == other._hash
         return False
 
-    def __and__(self, other: 'QueryInstance') -> 'QueryInstance':
+    def __and__(self, other: "QueryInstance") -> "QueryInstance":
         if self.is_cacheable() and other.is_cacheable():
-            hashval = ('and', frozenset([self._hash, other._hash]))
+            hashval = ("and", frozenset([self._hash, other._hash]))
         else:
             hashval = None
         return QueryInstance(lambda value: self(value) and other(value), hashval)
 
-    def __or__(self, other: 'QueryInstance') -> 'QueryInstance':
+    def __or__(self, other: "QueryInstance") -> "QueryInstance":
         if self.is_cacheable() and other.is_cacheable():
-            hashval = ('or', frozenset([self._hash, other._hash]))
+            hashval = ("or", frozenset([self._hash, other._hash]))
         else:
             hashval = None
         return QueryInstance(lambda value: self(value) or other(value), hashval)
 
-    def __invert__(self) -> 'QueryInstance':
-        hashval = ('not', self._hash) if self.is_cacheable() else None
+    def __invert__(self) -> "QueryInstance":
+        hashval = ("not", self._hash) if self.is_cacheable() else None
         return QueryInstance(lambda value: not self(value), hashval)
 
+
 class Query(QueryInstance):
-    """
-    TinyDB Queries.
+    """TinyDB Queries.
 
     Allows building queries for TinyDB databases. There are two main ways of
     using queries:
@@ -147,11 +145,12 @@ class Query(QueryInstance):
         self._path: Tuple[Union[str, Callable], ...] = ()
 
         def notest(_):
-            raise RuntimeError('Empty query was evaluated')
+            raise RuntimeError("Empty query was evaluated")
+
         super().__init__(test=notest, hashval=(None,))
 
     def __repr__(self):
-        return '{}()'.format(type(self).__name__)
+        return "{}()".format(type(self).__name__)
 
     def __hash__(self):
         return super().__hash__()
@@ -159,15 +158,19 @@ class Query(QueryInstance):
     def __getattr__(self, item: str):
         query = type(self)()
         query._path = self._path + (item,)
-        query._hash = ('path', query._path) if self.is_cacheable() else None
+        query._hash = ("path", query._path) if self.is_cacheable() else None
         return query
 
     def __getitem__(self, item: str):
         return self.__getattr__(item)
 
-    def _generate_test(self, test: Callable[[Any], bool], hashval: Tuple, allow_empty_path: bool=False) -> QueryInstance:
-        """
-        Generate a query based on a test function that first resolves the query
+    def _generate_test(
+        self,
+        test: Callable[[Any], bool],
+        hashval: Tuple,
+        allow_empty_path: bool = False,
+    ) -> QueryInstance:
+        """Generate a query based on a test function that first resolves the query
         path.
 
         :param test: The test the query executes.
@@ -175,7 +178,7 @@ class Query(QueryInstance):
         :return: A :class:`~tinydb.queries.QueryInstance` object
         """
         if not self._path and not allow_empty_path:
-            raise ValueError('Query has no path')
+            raise ValueError("Query has no path")
 
         def runner(value):
             try:
@@ -188,76 +191,72 @@ class Query(QueryInstance):
         return QueryInstance(runner, hashval)
 
     def __eq__(self, rhs: Any):
-        """
-        Test a dict value for equality.
+        """Test a dict value for equality.
 
         >>> Query().f1 == 42
 
         :param rhs: The value to compare against
         """
-        return self._generate_test(lambda value: value == rhs, ('==', self._path, freeze(rhs)))
+        return self._generate_test(
+            lambda value: value == rhs, ("==", self._path, freeze(rhs))
+        )
 
     def __ne__(self, rhs: Any):
-        """
-        Test a dict value for inequality.
+        """Test a dict value for inequality.
 
         >>> Query().f1 != 42
 
         :param rhs: The value to compare against
         """
-        return self._generate_test(lambda value: value != rhs, ('!=', self._path, freeze(rhs)))
+        return self._generate_test(
+            lambda value: value != rhs, ("!=", self._path, freeze(rhs))
+        )
 
     def __lt__(self, rhs: Any) -> QueryInstance:
-        """
-        Test a dict value for being lower than another value.
+        """Test a dict value for being lower than another value.
 
         >>> Query().f1 < 42
 
         :param rhs: The value to compare against
         """
-        return self._generate_test(lambda value: value < rhs, ('<', self._path, rhs))
+        return self._generate_test(lambda value: value < rhs, ("<", self._path, rhs))
 
     def __le__(self, rhs: Any) -> QueryInstance:
-        """
-        Test a dict value for being lower than or equal to another value.
+        """Test a dict value for being lower than or equal to another value.
 
         >>> where('f1') <= 42
 
         :param rhs: The value to compare against
         """
-        return self._generate_test(lambda value: value <= rhs, ('<=', self._path, rhs))
+        return self._generate_test(lambda value: value <= rhs, ("<=", self._path, rhs))
 
     def __gt__(self, rhs: Any) -> QueryInstance:
-        """
-        Test a dict value for being greater than another value.
+        """Test a dict value for being greater than another value.
 
         >>> Query().f1 > 42
 
         :param rhs: The value to compare against
         """
-        return self._generate_test(lambda value: value > rhs, ('>', self._path, rhs))
+        return self._generate_test(lambda value: value > rhs, (">", self._path, rhs))
 
     def __ge__(self, rhs: Any) -> QueryInstance:
-        """
-        Test a dict value for being greater than or equal to another value.
+        """Test a dict value for being greater than or equal to another value.
 
         >>> Query().f1 >= 42
 
         :param rhs: The value to compare against
         """
-        return self._generate_test(lambda value: value >= rhs, ('>=', self._path, rhs))
+        return self._generate_test(lambda value: value >= rhs, (">=", self._path, rhs))
 
     def exists(self) -> QueryInstance:
-        """
-        Test for a dict where a provided key exists.
+        """Test for a dict where a provided key exists.
 
         >>> Query().f1.exists()
         """
-        return self._generate_test(lambda _: True, ('exists', self._path))
+        return self._generate_test(lambda _: True, ("exists", self._path))
 
-    def matches(self, regex: str, flags: int=0) -> QueryInstance:
-        """
-        Run a regex test against a dict value (whole string has to match).
+    def matches(self, regex: str, flags: int = 0) -> QueryInstance:
+        """Run a regex test against a dict value (whole string has to match).
 
         >>> Query().f1.matches(r'^\\w+$')
 
@@ -266,12 +265,11 @@ class Query(QueryInstance):
         """
         return self._generate_test(
             lambda value: bool(re.match(regex, str(value), flags)),
-            ('matches', self._path, regex, flags)
+            ("matches", self._path, regex, flags),
         )
 
-    def search(self, regex: str, flags: int=0) -> QueryInstance:
-        """
-        Run a regex test against a dict value (only substring string has to
+    def search(self, regex: str, flags: int = 0) -> QueryInstance:
+        """Run a regex test against a dict value (only substring string has to
         match).
 
         >>> Query().f1.search(r'^\\w+$')
@@ -281,12 +279,11 @@ class Query(QueryInstance):
         """
         return self._generate_test(
             lambda value: bool(re.search(regex, str(value), flags)),
-            ('search', self._path, regex, flags)
+            ("search", self._path, regex, flags),
         )
 
     def test(self, func: Callable[[Mapping], bool], *args) -> QueryInstance:
-        """
-        Run a user-defined test function against a dict value.
+        """Run a user-defined test function against a dict value.
 
         >>> def test_func(val):
         ...     return val == 42
@@ -305,13 +302,11 @@ class Query(QueryInstance):
         :param args: Additional arguments to pass to the test function
         """
         return self._generate_test(
-            lambda value: func(value, *args),
-            ('test', self._path, func, args)
+            lambda value: func(value, *args), ("test", self._path, func, args)
         )
 
     def any(self, cond: Union[QueryInstance, List[Any]]) -> QueryInstance:
-        """
-        Check if a condition is met by any document in a list,
+        """Check if a condition is met by any document in a list,
         where a condition can also be a sequence (e.g. list).
 
         >>> Query().f1.any(Query().f2 == 1)
@@ -332,17 +327,18 @@ class Query(QueryInstance):
                      in the tested document.
         """
         if isinstance(cond, QueryInstance):
+
             def test(value):
                 return any(cond(item) for item in value)
         else:
+
             def test(value):
                 return any(item in cond for item in value)
 
-        return self._generate_test(test, ('any', self._path, freeze(cond)))
+        return self._generate_test(test, ("any", self._path, freeze(cond)))
 
-    def all(self, cond: Union['QueryInstance', List[Any]]) -> QueryInstance:
-        """
-        Check if a condition is met by all documents in a list,
+    def all(self, cond: Union["QueryInstance", List[Any]]) -> QueryInstance:
+        """Check if a condition is met by all documents in a list,
         where a condition can also be a sequence (e.g. list).
 
         >>> Query().f1.all(Query().f2 == 1)
@@ -361,44 +357,44 @@ class Query(QueryInstance):
                      which has to be contained in the tested document.
         """
         if isinstance(cond, QueryInstance):
+
             def test(value):
                 return all(cond(item) for item in value)
         else:
+
             def test(value):
                 return all(item in value for item in cond)
 
-        return self._generate_test(test, ('all', self._path, freeze(cond)))
+        return self._generate_test(test, ("all", self._path, freeze(cond)))
 
     def one_of(self, items: List[Any]) -> QueryInstance:
-        """
-        Check if the value is contained in a list or generator.
+        """Check if the value is contained in a list or generator.
 
         >>> Query().f1.one_of(['value 1', 'value 2'])
 
         :param items: The list of items to check with
         """
-        return self._generate_test(lambda value: value in items, ('one_of', self._path, freeze(items)))
+        return self._generate_test(
+            lambda value: value in items, ("one_of", self._path, freeze(items))
+        )
 
     def noop(self) -> QueryInstance:
-        """
-        Always evaluate to ``True``.
+        """Always evaluate to ``True``.
 
         Useful for having a base value when composing queries dynamically.
         """
-        return self._generate_test(lambda _: True, ('noop',), allow_empty_path=True)
+        return self._generate_test(lambda _: True, ("noop",), allow_empty_path=True)
 
-    def map(self, fn: Callable[[Any], Any]) -> 'Query':
-        """
-        Add a function to the query path. Similar to __getattr__ but for
+    def map(self, fn: Callable[[Any], Any]) -> "Query":
+        """Add a function to the query path. Similar to __getattr__ but for
         arbitrary functions.
         """
         query = type(self)()
         query._path = self._path + (fn,)
-        query._hash = ('path', query._path) if self.is_cacheable() else None
+        query._hash = ("path", query._path) if self.is_cacheable() else None
         return query
 
+
 def where(key: str) -> Query:
-    """
-    A shorthand for ``Query()[key]``
-    """
+    """A shorthand for ``Query()[key]``"""
     return Query()[key]
