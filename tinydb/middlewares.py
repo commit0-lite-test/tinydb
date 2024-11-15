@@ -20,7 +20,7 @@ class Middleware:
         self._storage_cls = storage_cls
         self.storage: Optional[Storage] = None
 
-    def __call__(self, *args: Any, **kwargs: Any) -> 'Middleware':
+    def __call__(self, *args: Any, **kwargs: Any) -> "Middleware":
         """Create the storage instance and store it as self.storage."""
         self.storage = self._storage_cls(*args, **kwargs)
         return self
