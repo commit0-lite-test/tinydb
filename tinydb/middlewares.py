@@ -48,6 +48,8 @@ class CachingMiddleware(Middleware):
     def read(self) -> Dict[str, Any]:
         """Read data from the cache or underlying storage."""
         if self.cache is None:
+            if self.storage is None:
+                raise RuntimeError("Storage is not initialized")
             self.cache = self.storage.read()
         return self.cache
 
@@ -61,11 +63,12 @@ class CachingMiddleware(Middleware):
 
     def flush(self) -> None:
         """Flush all unwritten data to disk."""
-        if self.cache is not None:
+        if self.cache is not None and self.storage is not None:
             self.storage.write(self.cache)
             self._cache_modified_count = 0
 
     def close(self) -> None:
         """Close the storage and flush any unwritten data."""
         self.flush()
-        self.storage.close()
+        if self.storage is not None:
+            self.storage.close()
