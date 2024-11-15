@@ -50,8 +50,14 @@ class LRUCache(abc.MutableMapping, Generic[K, V]):
 class FrozenDict(dict):
     """An immutable dictionary."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._hash = None
+
     def __hash__(self) -> int:
-        return hash(tuple(sorted(self.items())))
+        if self._hash is None:
+            self._hash = hash(tuple(sorted(self.items())))
+        return self._hash
 
     def _immutable(self, *args: Any, **kwargs: Any) -> NoReturn:
         raise TypeError("FrozenDict is immutable")
@@ -62,13 +68,6 @@ class FrozenDict(dict):
     update = _immutable
     pop = _immutable
     popitem = _immutable
-
-    # Override dict methods to ensure immutability
-    def __setitem__(self, key: Any, value: Any) -> NoReturn:
-        self._immutable()
-
-    def __delitem__(self, key: Any) -> NoReturn:
-        self._immutable()
 
 
 def freeze(obj: Any) -> Any:
