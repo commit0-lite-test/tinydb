@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 __all__ = ("Storage", "JSONStorage", "MemoryStorage")
 
 
-def touch(path: str, create_dirs: bool):
+def touch(path: str, create_dirs: bool) -> None:
     """Create a file if it doesn't exist yet.
 
     :param path: The file to create.
@@ -87,6 +87,7 @@ class JSONStorage(Storage):
         self._handle = open(path, mode=self._mode, encoding=encoding)
 
     def read(self) -> Optional[Dict[str, Dict[str, Any]]]:
+        """Read the current state from the JSON file."""
         # Move to the beginning of the file
         self._handle.seek(0)
 
@@ -96,6 +97,7 @@ class JSONStorage(Storage):
             return None
 
     def write(self, data: Dict[str, Dict[str, Any]]) -> None:
+        """Write the current state to the JSON file."""
         # Move to the beginning of the file and truncate it
         self._handle.seek(0)
         self._handle.truncate()
@@ -104,6 +106,7 @@ class JSONStorage(Storage):
         self._handle.flush()
 
     def close(self) -> None:
+        """Close the file handle."""
         self._handle.close()
 
 
@@ -116,10 +119,13 @@ class MemoryStorage(Storage):
         self.memory = None
 
     def read(self) -> Optional[Dict[str, Dict[str, Any]]]:
+        """Read the current state from memory."""
         return self.memory
 
     def write(self, data: Dict[str, Dict[str, Any]]) -> None:
+        """Write the current state to memory."""
         self.memory = data
 
     def close(self) -> None:
+        """No-op for MemoryStorage."""
         pass
