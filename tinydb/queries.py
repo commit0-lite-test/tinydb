@@ -145,7 +145,7 @@ class Query(QueryInstance):
     def __init__(self) -> None:
         self._path: Tuple[Union[str, Callable], ...] = ()
 
-        def notest(_):
+        def notest(_: Any) -> Never:
             raise RuntimeError("Empty query was evaluated")
 
         super().__init__(test=notest, hashval=(None,))
@@ -257,7 +257,7 @@ class Query(QueryInstance):
         return self._generate_test(lambda _: True, ("exists", self._path))
 
     def matches(self, regex: str, flags: int = 0) -> QueryInstance:
-        """Run a regex test against a dict value (whole string has to match).
+        r"""Run a regex test against a dict value (whole string has to match).
 
         >>> Query().f1.matches(r'^\\w+$')
 
@@ -270,13 +270,13 @@ class Query(QueryInstance):
         )
 
     def search(self, regex: str, flags: int = 0) -> QueryInstance:
-        """Run a regex test against a dict value (only substring string has to
+        r"""Run a regex test against a dict value (only substring string has to
         match).
 
         >>> Query().f1.search(r'^\\w+$')
 
         :param regex: The regular expression to use for matching
-        :param flags: regex flags to pass to ``re.match``
+        :param flags: regex flags to pass to ``re.search``
         """
         return self._generate_test(
             lambda value: bool(re.search(regex, str(value), flags)),
@@ -397,5 +397,5 @@ class Query(QueryInstance):
 
 
 def where(key: str) -> Query:
-    """A shorthand for ``Query()[key]``"""
+    """A shorthand for ``Query()[key]``."""
     return Query()[key]
