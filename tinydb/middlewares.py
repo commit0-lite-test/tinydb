@@ -51,7 +51,7 @@ class CachingMiddleware(Middleware):
             if self.storage is None:
                 raise RuntimeError("Storage is not initialized")
             self.cache = self.storage.read()
-        return self.cache
+        return self.cache if self.cache is not None else {}
 
     def write(self, data: Dict[str, Any]) -> None:
         """Write data to the cache and possibly to the underlying storage."""
