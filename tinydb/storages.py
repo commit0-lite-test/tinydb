@@ -1,32 +1,32 @@
-"""
-Contains the :class:`base class <tinydb.storages.Storage>` for storages and
+"""Contains the :class:`base class <tinydb.storages.Storage>` for storages and
 implementations.
 """
-import io
+
 import json
 import os
 import warnings
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
-__all__ = ('Storage', 'JSONStorage', 'MemoryStorage')
+
+__all__ = ("Storage", "JSONStorage", "MemoryStorage")
+
 
 def touch(path: str, create_dirs: bool):
-    """
-    Create a file if it doesn't exist yet.
+    """Create a file if it doesn't exist yet.
 
     :param path: The file to create.
     :param create_dirs: Whether to create all missing parent directories.
     """
     if create_dirs:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-    
+
     if not os.path.exists(path):
-        with open(path, 'a'):
+        with open(path, "a"):
             os.utime(path, None)
 
+
 class Storage(ABC):
-    """
-    The abstract base class for all Storages.
+    """The abstract base class for all Storages.
 
     A Storage (de)serializes the current state of the database and stores it in
     some place (memory, file on disk, ...).
@@ -34,8 +34,7 @@ class Storage(ABC):
 
     @abstractmethod
     def read(self) -> Optional[Dict[str, Dict[str, Any]]]:
-        """
-        Read the current state.
+        """Read the current state.
 
         Any kind of deserialization should go here.
 
@@ -45,8 +44,7 @@ class Storage(ABC):
 
     @abstractmethod
     def write(self, data: Dict[str, Dict[str, Any]]) -> None:
-        """
-        Write the current state of the database to the storage.
+        """Write the current state of the database to the storage.
 
         Any kind of serialization should go here.
 
@@ -55,19 +53,17 @@ class Storage(ABC):
         raise NotImplementedError
 
     def close(self) -> None:
-        """
-        Optional: Close open file handles, etc.
-        """
+        """Optional: Close open file handles, etc."""
         pass
 
-class JSONStorage(Storage):
-    """
-    Store the data in a JSON file.
-    """
 
-    def __init__(self, path: str, create_dirs=False, encoding=None, access_mode='r+', **kwargs):
-        """
-        Create a new instance.
+class JSONStorage(Storage):
+    """Store the data in a JSON file."""
+
+    def __init__(
+        self, path: str, create_dirs=False, encoding=None, access_mode="r+", **kwargs
+    ):
+        """Create a new instance.
 
         Also creates the storage file, if it doesn't exist and the access mode
         is appropriate for writing.
@@ -82,16 +78,18 @@ class JSONStorage(Storage):
         super().__init__()
         self._mode = access_mode
         self.kwargs = kwargs
-        if access_mode not in ('r', 'rb', 'r+', 'rb+'):
-            warnings.warn("Using an `access_mode` other than 'r', 'rb', 'r+' or 'rb+' can cause data loss or corruption")
-        if any([character in self._mode for character in ('+', 'w', 'a')]):
+        if access_mode not in ("r", "rb", "r+", "rb+"):
+            warnings.warn(
+                "Using an `access_mode` other than 'r', 'rb', 'r+' or 'rb+' can cause data loss or corruption"
+            )
+        if any([character in self._mode for character in ("+", "w", "a")]):
             touch(path, create_dirs=create_dirs)
         self._handle = open(path, mode=self._mode, encoding=encoding)
 
     def read(self) -> Optional[Dict[str, Dict[str, Any]]]:
         # Move to the beginning of the file
         self._handle.seek(0)
-        
+
         try:
             return json.load(self._handle)
         except ValueError:
@@ -101,22 +99,19 @@ class JSONStorage(Storage):
         # Move to the beginning of the file and truncate it
         self._handle.seek(0)
         self._handle.truncate()
-        
+
         json.dump(data, self._handle, **self.kwargs)
         self._handle.flush()
 
     def close(self) -> None:
         self._handle.close()
 
+
 class MemoryStorage(Storage):
-    """
-    Store the data as JSON in memory.
-    """
+    """Store the data as JSON in memory."""
 
     def __init__(self):
-        """
-        Create a new instance.
-        """
+        """Create a new instance."""
         super().__init__()
         self.memory = None
 
