@@ -1,4 +1,5 @@
-from typing import TypeVar, Optional, Callable, Dict, TYPE_CHECKING
+from typing import TypeVar, Optional, Callable, Dict, Any, TYPE_CHECKING
+from collections import defaultdict
 
 T = TypeVar("T")
 CB = Optional[Callable[[T], None]]
@@ -10,18 +11,19 @@ if TYPE_CHECKING:
 
     DynamicClassDef = DynamicClassDefContext
 else:
-    NameExpr = Options = Plugin = DynamicClassDefContext = object
-    DynamicClassDef = object
+    NameExpr = Options = Plugin = DynamicClassDefContext = Any
+    DynamicClassDef = Any
 
 
 class TinyDBPlugin(Plugin):
     def __init__(self, options: Options):
         super().__init__(options)
-        self.named_placeholders: Dict[str, str] = {}
+        self.dynamic_class_hooks: Dict[str, Optional[Callable[[Any], None]]] = defaultdict(lambda: None)
+        self.dynamic_class_hooks["tinydb.utils.with_typehint"] = self.with_typehint_callback
 
     def get_dynamic_class_hook(
         self, fullname: str
-    ) -> Optional[Callable[[DynamicClassDef], None]]:
+    ) -> Optional[Callable[[Any], None]]:
         """Get the dynamic class hook for the given fullname.
 
         Args:
@@ -30,24 +32,21 @@ class TinyDBPlugin(Plugin):
 
         Returns:
         -------
-            Optional[Callable[[DynamicClassDef], None]]: The callback function if the fullname matches, None otherwise.
+            Optional[Callable[[Any], None]]: The callback function if the fullname matches, None otherwise.
 
         """
-        if fullname == "tinydb.utils.with_typehint":
-            return self.with_typehint_callback
-        return None
+        return self.dynamic_class_hooks[fullname]
 
-    def with_typehint_callback(self, ctx: DynamicClassDef) -> None:
+    def with_typehint_callback(self, ctx: Any) -> None:
         """Callback function for the with_typehint dynamic class.
 
         Args:
         ----
-            ctx (DynamicClassDef): The dynamic class definition context.
+            ctx (Any): The dynamic class definition context.
 
         """
         if len(ctx.call.args) != 1:
             ctx.api.fail("with_typehint() requires exactly one argument", ctx.call)
-            return
 
         base_type = ctx.api.analyze_type(ctx.call.args[0])
         if isinstance(base_type, NameExpr):
