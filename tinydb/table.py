@@ -78,11 +78,11 @@ class Table:
 
     def __repr__(self):
         args = [
-            "name={!r}".format(self.name),
-            "total={}".format(len(self)),
-            "storage={}".format(self._storage),
+            f"name={self.name!r}",
+            f"total={len(self._read_table())}",
+            f"storage={self._storage}",
         ]
-        return "<{} {}>".format(type(self).__name__, ", ".join(args))
+        return f"<{type(self).__name__} {', '.join(args)}>"
 
     @property
     def name(self) -> str:
@@ -252,7 +252,7 @@ class Table:
         """
         updated_ids = []
 
-        def updater(data):
+        def updater(data: Dict[int, Mapping]) -> None:
             nonlocal updated_ids
             for fields, cond in updates:
                 for doc_id, doc in data.items():
@@ -260,7 +260,7 @@ class Table:
                         if callable(fields):
                             fields(doc)
                         else:
-                            doc.update(fields)
+                            doc.update(fields)  # type: ignore
                         updated_ids.append(doc_id)
 
         self._update_table(updater)
@@ -336,7 +336,7 @@ class Table:
     def _get_next_id(self) -> int:
         """Return the ID for a newly inserted document."""
         if self._next_id is None:
-            self._next_id = max(self._read_table().keys() or [0]) + 1
+            self._next_id = max((int(k) for k in self._read_table().keys()) or [0]) + 1
         else:
             self._next_id += 1
         return self._next_id
@@ -365,6 +365,6 @@ class Table:
         """
         data = self._storage.read() or {}
         table_data = data.get(self._name, {})
-        updater(table_data)
+        updater({int(k): v for k, v in table_data.items()})
         data[self._name] = table_data
         self._storage.write(data)
