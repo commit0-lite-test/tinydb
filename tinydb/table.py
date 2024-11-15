@@ -113,7 +113,7 @@ class Table:
         """
         doc_ids = []
 
-        def updater(data):
+        def updater(data: Dict[int, Mapping]) -> None:
             nonlocal doc_ids
             for document in documents:
                 doc_id = self._get_next_id()
@@ -226,7 +226,7 @@ class Table:
         """
         updated_ids = []
 
-        def updater(data):
+        def updater(data: Dict[int, Mapping]) -> None:
             nonlocal updated_ids
             for doc_id, doc in data.items():
                 if (doc_ids is None or doc_id in doc_ids) and (
@@ -235,7 +235,7 @@ class Table:
                     if callable(fields):
                         fields(doc)
                     else:
-                        doc.update(fields)
+                        doc.update(fields)  # type: ignore
                     updated_ids.append(doc_id)
 
         self._update_table(updater)
@@ -304,7 +304,7 @@ class Table:
         """
         removed_ids = []
 
-        def updater(data):
+        def updater(data: Dict[int, Mapping]) -> None:
             nonlocal removed_ids
             for doc_id in list(data.keys()):
                 if (doc_ids is None or doc_id in doc_ids) and (
@@ -333,7 +333,7 @@ class Table:
         """Clear the query cache."""
         self._query_cache.clear()
 
-    def _get_next_id(self):
+    def _get_next_id(self) -> int:
         """Return the ID for a newly inserted document."""
         if self._next_id is None:
             self._next_id = max(self._read_table().keys() or [0]) + 1
@@ -351,7 +351,7 @@ class Table:
         data = self._storage.read()
         return data.get(self._name, {}) if data else {}
 
-    def _update_table(self, updater: Callable[[Dict[int, Mapping]], None]):
+    def _update_table(self, updater: Callable[[Dict[int, Mapping]], None]) -> None:
         """Perform a table update operation.
 
         The storage interface used by TinyDB only allows to read/write the
