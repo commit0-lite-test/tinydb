@@ -18,12 +18,14 @@ else:
 class TinyDBPlugin(Plugin):
     def __init__(self, options: Options):
         super().__init__(options)
-        self.dynamic_class_hooks: Dict[str, Optional[Callable[[Any], None]]] = defaultdict(lambda: None)
-        self.dynamic_class_hooks["tinydb.utils.with_typehint"] = self.with_typehint_callback
+        self.dynamic_class_hooks: Dict[str, Optional[Callable[[Any], None]]] = (
+            defaultdict(lambda: None)
+        )
+        self.dynamic_class_hooks["tinydb.utils.with_typehint"] = (
+            self.with_typehint_callback
+        )
 
-    def get_dynamic_class_hook(
-        self, fullname: str
-    ) -> Optional[Callable[[Any], None]]:
+    def get_dynamic_class_hook(self, fullname: str) -> Optional[Callable[[Any], None]]:
         """Get the dynamic class hook for the given fullname.
 
         Args:
