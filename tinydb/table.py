@@ -1,16 +1,17 @@
-"""
-This module implements tables, the central place for accessing and manipulating
+"""This module implements tables, the central place for accessing and manipulating
 data in TinyDB.
 """
-from typing import Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Union, cast, Tuple
+
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Union, Tuple
 from .queries import QueryLike
 from .storages import Storage
 from .utils import LRUCache
-__all__ = ('Document', 'Table')
+
+__all__ = ("Document", "Table")
+
 
 class Document(dict):
-    """
-    A document stored in the database.
+    """A document stored in the database.
 
     This class provides a way to access both a document's content and
     its ID using ``doc.doc_id``.
@@ -20,9 +21,9 @@ class Document(dict):
         super().__init__(value)
         self.doc_id = doc_id
 
+
 class Table:
-    """
-    Represents a single TinyDB table.
+    """Represents a single TinyDB table.
 
     It provides methods for accessing and manipulating documents.
 
@@ -57,41 +58,46 @@ class Table:
     :param name: The table name
     :param cache_size: Maximum capacity of query cache
     """
+
     document_class = Document
     document_id_class = int
     query_cache_class = LRUCache
     default_query_cache_capacity = 10
 
-    def __init__(self, storage: Storage, name: str, cache_size: int=default_query_cache_capacity):
-        """
-        Create a table instance.
-        """
+    def __init__(
+        self,
+        storage: Storage,
+        name: str,
+        cache_size: int = default_query_cache_capacity,
+    ):
+        """Create a table instance."""
         self._storage = storage
         self._name = name
-        self._query_cache: LRUCache[QueryLike, List[Document]] = self.query_cache_class(capacity=cache_size)
+        self._query_cache: LRUCache[QueryLike, List[Document]] = self.query_cache_class(
+            capacity=cache_size
+        )
         self._next_id = None
 
     def __repr__(self):
-        args = ['name={!r}'.format(self.name), 'total={}'.format(len(self)), 'storage={}'.format(self._storage)]
-        return '<{} {}>'.format(type(self).__name__, ', '.join(args))
+        args = [
+            "name={!r}".format(self.name),
+            "total={}".format(len(self)),
+            "storage={}".format(self._storage),
+        ]
+        return "<{} {}>".format(type(self).__name__, ", ".join(args))
 
     @property
     def name(self) -> str:
-        """
-        Get the table name.
-        """
+        """Get the table name."""
         return self._name
 
     @property
     def storage(self) -> Storage:
-        """
-        Get the table storage instance.
-        """
+        """Get the table storage instance."""
         return self._storage
 
     def insert(self, document: Mapping) -> int:
-        """
-        Insert a new document into the table.
+        """Insert a new document into the table.
 
         :param document: the document to insert
         :returns: the inserted document's ID
@@ -102,35 +108,36 @@ class Table:
         return doc_id
 
     def insert_multiple(self, documents: Iterable[Mapping]) -> List[int]:
-        """
-        Insert multiple documents into the table.
+        """Insert multiple documents into the table.
 
         :param documents: an Iterable of documents to insert
         :returns: a list containing the inserted documents' IDs
         """
         doc_ids = []
+
         def updater(data):
             nonlocal doc_ids
             for document in documents:
                 doc_id = self._get_next_id()
                 data[doc_id] = document
                 doc_ids.append(doc_id)
+
         self._update_table(updater)
         self.clear_cache()
         return doc_ids
 
     def all(self) -> List[Document]:
-        """
-        Get all documents stored in the table.
+        """Get all documents stored in the table.
 
         :returns: a list with all documents.
         """
-        return [self.document_class(doc, self.document_id_class(doc_id))
-                for doc_id, doc in self._read_table().items()]
+        return [
+            self.document_class(doc, self.document_id_class(doc_id))
+            for doc_id, doc in self._read_table().items()
+        ]
 
     def search(self, cond: QueryLike) -> List[Document]:
-        """
-        Search for all documents matching a 'where' cond.
+        """Search for all documents matching a 'where' cond.
 
         :param cond: the condition to check against
         :returns: list of matching documents
@@ -138,21 +145,27 @@ class Table:
         if cond in self._query_cache:
             return self._query_cache[cond]
 
-        docs = [self.document_class(doc, self.document_id_class(doc_id))
-                for doc_id, doc in self._read_table().items()
-                if cond(doc)]
-        
-        if hasattr(cond, 'is_cacheable') and cond.is_cacheable():
+        docs = [
+            self.document_class(doc, self.document_id_class(doc_id))
+            for doc_id, doc in self._read_table().items()
+            if cond(doc)
+        ]
+
+        if hasattr(cond, "is_cacheable") and cond.is_cacheable():
             self._query_cache[cond] = docs
 
         return docs
 
-    def get(self, cond: Optional[QueryLike]=None, doc_id: Optional[int]=None, doc_ids: Optional[List]=None) -> Optional[Union[Document, List[Document]]]:
-        """
-        Get exactly one document specified by a query or a document ID.
+    def get(
+        self,
+        cond: Optional[QueryLike] = None,
+        doc_id: Optional[int] = None,
+        doc_ids: Optional[List] = None,
+    ) -> Optional[Union[Document, List[Document]]]:
+        """Get exactly one document specified by a query or a document ID.
         However, if multiple document IDs are given then returns all
         documents in a list.
-        
+
         Returns ``None`` if the document doesn't exist.
 
         :param cond: the condition to check against
@@ -164,23 +177,29 @@ class Table:
         if doc_id is not None:
             table = self._read_table()
             if doc_id in table:
-                return self.document_class(table[doc_id], self.document_id_class(doc_id))
+                return self.document_class(
+                    table[doc_id], self.document_id_class(doc_id)
+                )
             return None
-        
+
         if doc_ids is not None:
             table = self._read_table()
-            return [self.document_class(table[id], self.document_id_class(id))
-                    for id in doc_ids if id in table]
-        
+            return [
+                self.document_class(table[id], self.document_id_class(id))
+                for id in doc_ids
+                if id in table
+            ]
+
         if cond is not None:
             for doc in self.search(cond):
                 return doc
-        
+
         return None
 
-    def contains(self, cond: Optional[QueryLike]=None, doc_id: Optional[int]=None) -> bool:
-        """
-        Check whether the database contains a document matching a query or
+    def contains(
+        self, cond: Optional[QueryLike] = None, doc_id: Optional[int] = None
+    ) -> bool:
+        """Check whether the database contains a document matching a query or
         an ID.
 
         If ``doc_id`` is set, it checks if the db contains the specified ID.
@@ -190,12 +209,16 @@ class Table:
         """
         if doc_id is not None:
             return doc_id in self._read_table()
-        
+
         return self.get(cond) is not None
 
-    def update(self, fields: Union[Mapping, Callable[[Mapping], None]], cond: Optional[QueryLike]=None, doc_ids: Optional[Iterable[int]]=None) -> List[int]:
-        """
-        Update all matching documents to have a given set of fields.
+    def update(
+        self,
+        fields: Union[Mapping, Callable[[Mapping], None]],
+        cond: Optional[QueryLike] = None,
+        doc_ids: Optional[Iterable[int]] = None,
+    ) -> List[int]:
+        """Update all matching documents to have a given set of fields.
 
         :param fields: the fields that the matching documents will have
                        or a method that will update the documents
@@ -204,26 +227,33 @@ class Table:
         :returns: a list containing the updated document's ID
         """
         updated_ids = []
+
         def updater(data):
             nonlocal updated_ids
             for doc_id, doc in data.items():
-                if (doc_ids is None or doc_id in doc_ids) and (cond is None or cond(doc)):
+                if (doc_ids is None or doc_id in doc_ids) and (
+                    cond is None or cond(doc)
+                ):
                     if callable(fields):
                         fields(doc)
                     else:
                         doc.update(fields)
                     updated_ids.append(doc_id)
+
         self._update_table(updater)
         self.clear_cache()
         return updated_ids
 
-    def update_multiple(self, updates: Iterable[Tuple[Union[Mapping, Callable[[Mapping], None]], QueryLike]]) -> List[int]:
-        """
-        Update all matching documents to have a given set of fields.
+    def update_multiple(
+        self,
+        updates: Iterable[Tuple[Union[Mapping, Callable[[Mapping], None]], QueryLike]],
+    ) -> List[int]:
+        """Update all matching documents to have a given set of fields.
 
         :returns: a list containing the updated document's ID
         """
         updated_ids = []
+
         def updater(data):
             nonlocal updated_ids
             for fields, cond in updates:
@@ -234,13 +264,13 @@ class Table:
                         else:
                             doc.update(fields)
                         updated_ids.append(doc_id)
+
         self._update_table(updater)
         self.clear_cache()
         return updated_ids
 
-    def upsert(self, document: Mapping, cond: Optional[QueryLike]=None) -> List[int]:
-        """
-        Update documents, if they exist, insert them otherwise.
+    def upsert(self, document: Mapping, cond: Optional[QueryLike] = None) -> List[int]:
+        """Update documents, if they exist, insert them otherwise.
 
         Note: This will update *all* documents matching the query. Document
         argument can be a tinydb.table.Document object if you want to specify a
@@ -254,61 +284,59 @@ class Table:
         if isinstance(document, Document):
             doc_id = document.doc_id
             document = dict(document)
-            del document['doc_id']
+            del document["doc_id"]
             updated = self.update(document, doc_ids=[doc_id])
             if updated:
                 return updated
             return [self.insert(document)]
-        
+
         updated = self.update(document, cond)
         if updated:
             return updated
         return [self.insert(document)]
 
-    def remove(self, cond: Optional[QueryLike]=None, doc_ids: Optional[Iterable[int]]=None) -> List[int]:
-        """
-        Remove all matching documents.
+    def remove(
+        self, cond: Optional[QueryLike] = None, doc_ids: Optional[Iterable[int]] = None
+    ) -> List[int]:
+        """Remove all matching documents.
 
         :param cond: the condition to check against
         :param doc_ids: a list of document IDs
         :returns: a list containing the removed documents' ID
         """
         removed_ids = []
+
         def updater(data):
             nonlocal removed_ids
             for doc_id in list(data.keys()):
-                if (doc_ids is None or doc_id in doc_ids) and (cond is None or cond(data[doc_id])):
+                if (doc_ids is None or doc_id in doc_ids) and (
+                    cond is None or cond(data[doc_id])
+                ):
                     del data[doc_id]
                     removed_ids.append(doc_id)
+
         self._update_table(updater)
         self.clear_cache()
         return removed_ids
 
     def truncate(self) -> None:
-        """
-        Truncate the table by removing all documents.
-        """
+        """Truncate the table by removing all documents."""
         self._update_table(lambda data: data.clear())
         self.clear_cache()
 
     def count(self, cond: QueryLike) -> int:
-        """
-        Count the documents matching a query.
+        """Count the documents matching a query.
 
         :param cond: the condition use
         """
         return len(self.search(cond))
 
     def clear_cache(self) -> None:
-        """
-        Clear the query cache.
-        """
+        """Clear the query cache."""
         self._query_cache.clear()
 
     def _get_next_id(self):
-        """
-        Return the ID for a newly inserted document.
-        """
+        """Return the ID for a newly inserted document."""
         if self._next_id is None:
             self._next_id = max(self._read_table().keys() or [0]) + 1
         else:
@@ -316,10 +344,9 @@ class Table:
         return self._next_id
 
     def _read_table(self) -> Dict[str, Mapping]:
-        """
-        Read the table data from the underlying storage.
+        """Read the table data from the underlying storage.
 
-        Documents and doc_ids are NOT yet transformed, as 
+        Documents and doc_ids are NOT yet transformed, as
         we may not want to convert *all* documents when returning
         only one document for example.
         """
@@ -327,8 +354,7 @@ class Table:
         return data.get(self._name, {}) if data else {}
 
     def _update_table(self, updater: Callable[[Dict[int, Mapping]], None]):
-        """
-        Perform a table update operation.
+        """Perform a table update operation.
 
         The storage interface used by TinyDB only allows to read/write the
         complete database data, but not modifying only portions of it. Thus,
