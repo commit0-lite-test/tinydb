@@ -22,7 +22,7 @@ def with_typehint(baseclass: Type[T]):
     MyPy does not. For that reason TinyDB has a MyPy plugin in
     ``mypy_plugin.py`` that adds support for this pattern.
     """
-    pass
+    return baseclass
 
 class LRUCache(abc.MutableMapping, Generic[K, V]):
     """
@@ -74,6 +74,10 @@ class FrozenDict(dict):
 
     def __hash__(self):
         return hash(tuple(sorted(self.items())))
+
+    def _immutable(self, *args, **kwargs):
+        raise TypeError("FrozenDict is immutable")
+
     __setitem__ = _immutable
     __delitem__ = _immutable
     clear = _immutable
@@ -84,4 +88,10 @@ def freeze(obj):
     """
     Freeze an object by making it immutable and thus hashable.
     """
-    pass
+    if isinstance(obj, dict):
+        return FrozenDict((k, freeze(v)) for k, v in obj.items())
+    elif isinstance(obj, list):
+        return tuple(freeze(el) for el in obj)
+    elif isinstance(obj, set):
+        return frozenset(freeze(el) for el in obj)
+    return obj
