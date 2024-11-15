@@ -82,8 +82,35 @@ class CachingMiddleware(Middleware):
         self.cache = None
         self._cache_modified_count = 0
 
+    def read(self):
+        """
+        Read data from the cache or underlying storage.
+        """
+        if self.cache is None:
+            self.cache = self.storage.read()
+        return self.cache
+
+    def write(self, data):
+        """
+        Write data to the cache and possibly to the underlying storage.
+        """
+        self.cache = data
+        self._cache_modified_count += 1
+
+        if self._cache_modified_count >= self.WRITE_CACHE_SIZE:
+            self.flush()
+
     def flush(self):
         """
         Flush all unwritten data to disk.
         """
-        pass
+        if self.cache is not None:
+            self.storage.write(self.cache)
+            self._cache_modified_count = 0
+
+    def close(self):
+        """
+        Close the storage and flush any unwritten data.
+        """
+        self.flush()
+        self.storage.close()
