@@ -79,7 +79,7 @@ class TinyDB(TableBase):
             f"tables={list(self.tables())}",
             f"tables_count={len(self.tables())}",
             f"default_table_documents_count={len(self)}",
-            f"all_tables_documents_count={[f'{table}={len(self.table(table))}' for table in self.tables()]}",
+            f"all_tables_documents_count={[f'{table}={len(self.table(table))}' for table in self.tables()]}",  # type: ignore
         ]
         return f"<{type(self).__name__} {', '.join(args)}>"
 
@@ -179,7 +179,7 @@ class TinyDB(TableBase):
         >>> len(db)
         0
         """
-        return len(self.table(self.default_table_name))
+        return len(self.table(self.default_table_name))  # type: ignore
 
     def __iter__(self) -> Iterator[Document]:
         """Return an iterator for the default table's documents."""
