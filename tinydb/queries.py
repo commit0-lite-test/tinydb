@@ -1,4 +1,4 @@
-"""Contains the querying interface.
+r"""Contains the querying interface.
 
 Starting with :class:`~tinydb.queries.Query` you can construct complex
 queries:
@@ -72,6 +72,7 @@ class QueryInstance:
         self._hash = hashval
 
     def __call__(self, value: Mapping) -> bool:
+        """Evaluate the query against the given value."""
         """Evaluate the query to check if it matches a specified value.
 
         :param value: The value to check.
@@ -180,7 +181,7 @@ class Query(QueryInstance):
         if not self._path and not allow_empty_path:
             raise ValueError("Query has no path")
 
-        def runner(value):
+        def runner(value: Any) -> bool:
             try:
                 for part in self._path:
                     value = value[part]
@@ -282,7 +283,7 @@ class Query(QueryInstance):
             ("search", self._path, regex, flags),
         )
 
-    def test(self, func: Callable[[Mapping], bool], *args) -> QueryInstance:
+    def test(self, func: Callable[[Mapping], bool], *args: Any) -> QueryInstance:
         """Run a user-defined test function against a dict value.
 
         >>> def test_func(val):
