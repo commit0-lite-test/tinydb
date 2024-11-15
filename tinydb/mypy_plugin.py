@@ -2,18 +2,19 @@ from typing import TypeVar, Optional, Callable, Dict
 from mypy.nodes import NameExpr
 from mypy.options import Options
 from mypy.plugin import Plugin, DynamicClassDefContext
-T = TypeVar('T')
+
+T = TypeVar("T")
 CB = Optional[Callable[[T], None]]
 DynamicClassDef = DynamicClassDefContext
 
-class TinyDBPlugin(Plugin):
 
+class TinyDBPlugin(Plugin):
     def __init__(self, options: Options):
         super().__init__(options)
         self.named_placeholders: Dict[str, str] = {}
 
     def get_dynamic_class_hook(self, fullname: str) -> CB[DynamicClassDef]:
-        if fullname == 'tinydb.utils.with_typehint':
+        if fullname == "tinydb.utils.with_typehint":
             return self.with_typehint_callback
         return None
 
