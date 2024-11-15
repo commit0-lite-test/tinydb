@@ -17,7 +17,12 @@ def touch(path: str, create_dirs: bool):
     :param path: The file to create.
     :param create_dirs: Whether to create all missing parent directories.
     """
-    pass
+    if create_dirs:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+    
+    if not os.path.exists(path):
+        with open(path, 'a'):
+            os.utime(path, None)
 
 class Storage(ABC):
     """
@@ -36,7 +41,7 @@ class Storage(ABC):
 
         Return ``None`` here to indicate that the storage is empty.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def write(self, data: Dict[str, Dict[str, Any]]) -> None:
@@ -47,7 +52,7 @@ class Storage(ABC):
 
         :param data: The current state of the database.
         """
-        pass
+        raise NotImplementedError
 
     def close(self) -> None:
         """
@@ -83,6 +88,26 @@ class JSONStorage(Storage):
             touch(path, create_dirs=create_dirs)
         self._handle = open(path, mode=self._mode, encoding=encoding)
 
+    def read(self) -> Optional[Dict[str, Dict[str, Any]]]:
+        # Move to the beginning of the file
+        self._handle.seek(0)
+        
+        try:
+            return json.load(self._handle)
+        except ValueError:
+            return None
+
+    def write(self, data: Dict[str, Dict[str, Any]]) -> None:
+        # Move to the beginning of the file and truncate it
+        self._handle.seek(0)
+        self._handle.truncate()
+        
+        json.dump(data, self._handle, **self.kwargs)
+        self._handle.flush()
+
+    def close(self) -> None:
+        self._handle.close()
+
 class MemoryStorage(Storage):
     """
     Store the data as JSON in memory.
@@ -94,3 +119,12 @@ class MemoryStorage(Storage):
         """
         super().__init__()
         self.memory = None
+
+    def read(self) -> Optional[Dict[str, Dict[str, Any]]]:
+        return self.memory
+
+    def write(self, data: Dict[str, Dict[str, Any]]) -> None:
+        self.memory = data
+
+    def close(self) -> None:
+        pass
