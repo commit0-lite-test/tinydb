@@ -1,6 +1,6 @@
-"""This module contains the main component of TinyDB: the database."""
+"""Contains the main component of TinyDB: the database."""
 
-from typing import Dict, Iterator, Set, Type
+from typing import Dict, Iterator, Set, Type, Any
 from . import JSONStorage
 from .storages import Storage
 from .table import Table, Document
