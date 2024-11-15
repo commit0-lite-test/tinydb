@@ -1,13 +1,12 @@
-"""
-Contains the :class:`base class <tinydb.middlewares.Middleware>` for
+"""Contains the :class:`base class <tinydb.middlewares.Middleware>` for
 middlewares and implementations.
 """
-from typing import Optional
+
 from tinydb import Storage
 
+
 class Middleware:
-    """
-    The base class for all Middlewares.
+    """The base class for all Middlewares.
 
     Middlewares hook into the read/write process of TinyDB allowing you to
     extend the behaviour by adding caching, logging, ...
@@ -21,8 +20,7 @@ class Middleware:
         self.storage: Storage = None
 
     def __call__(self, *args, **kwargs):
-        """
-        Create the storage instance and store it as self.storage.
+        """Create the storage instance and store it as self.storage.
 
         Usually a user creates a new TinyDB instance like this::
 
@@ -61,20 +59,20 @@ class Middleware:
         return self
 
     def __getattr__(self, name):
-        """
-        Forward all unknown attribute calls to the underlying storage, so we
+        """Forward all unknown attribute calls to the underlying storage, so we
         remain as transparent as possible.
         """
-        return getattr(self.__dict__['storage'], name)
+        return getattr(self.__dict__["storage"], name)
+
 
 class CachingMiddleware(Middleware):
-    """
-    Add some caching to TinyDB.
+    """Add some caching to TinyDB.
 
     This Middleware aims to improve the performance of TinyDB by writing only
     the last DB state every :attr:`WRITE_CACHE_SIZE` time and reading always
     from cache.
     """
+
     WRITE_CACHE_SIZE = 1000
 
     def __init__(self, storage_cls):
@@ -83,17 +81,13 @@ class CachingMiddleware(Middleware):
         self._cache_modified_count = 0
 
     def read(self):
-        """
-        Read data from the cache or underlying storage.
-        """
+        """Read data from the cache or underlying storage."""
         if self.cache is None:
             self.cache = self.storage.read()
         return self.cache
 
     def write(self, data):
-        """
-        Write data to the cache and possibly to the underlying storage.
-        """
+        """Write data to the cache and possibly to the underlying storage."""
         self.cache = data
         self._cache_modified_count += 1
 
@@ -101,16 +95,12 @@ class CachingMiddleware(Middleware):
             self.flush()
 
     def flush(self):
-        """
-        Flush all unwritten data to disk.
-        """
+        """Flush all unwritten data to disk."""
         if self.cache is not None:
             self.storage.write(self.cache)
             self._cache_modified_count = 0
 
     def close(self):
-        """
-        Close the storage and flush any unwritten data.
-        """
+        """Close the storage and flush any unwritten data."""
         self.flush()
         self.storage.close()
