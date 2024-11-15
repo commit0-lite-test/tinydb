@@ -80,14 +80,14 @@ class Table:
         """
         Get the table name.
         """
-        pass
+        return self._name
 
     @property
     def storage(self) -> Storage:
         """
         Get the table storage instance.
         """
-        pass
+        return self._storage
 
     def insert(self, document: Mapping) -> int:
         """
@@ -96,7 +96,10 @@ class Table:
         :param document: the document to insert
         :returns: the inserted document's ID
         """
-        pass
+        doc_id = self._get_next_id()
+        self._update_table(lambda data: data.update({doc_id: document}))
+        self.clear_cache()
+        return doc_id
 
     def insert_multiple(self, documents: Iterable[Mapping]) -> List[int]:
         """
@@ -105,7 +108,16 @@ class Table:
         :param documents: an Iterable of documents to insert
         :returns: a list containing the inserted documents' IDs
         """
-        pass
+        doc_ids = []
+        def updater(data):
+            nonlocal doc_ids
+            for document in documents:
+                doc_id = self._get_next_id()
+                data[doc_id] = document
+                doc_ids.append(doc_id)
+        self._update_table(updater)
+        self.clear_cache()
+        return doc_ids
 
     def all(self) -> List[Document]:
         """
@@ -113,7 +125,8 @@ class Table:
 
         :returns: a list with all documents.
         """
-        pass
+        return [self.document_class(doc, self.document_id_class(doc_id))
+                for doc_id, doc in self._read_table().items()]
 
     def search(self, cond: QueryLike) -> List[Document]:
         """
@@ -122,7 +135,17 @@ class Table:
         :param cond: the condition to check against
         :returns: list of matching documents
         """
-        pass
+        if cond in self._query_cache:
+            return self._query_cache[cond]
+
+        docs = [self.document_class(doc, self.document_id_class(doc_id))
+                for doc_id, doc in self._read_table().items()
+                if cond(doc)]
+        
+        if hasattr(cond, 'is_cacheable') and cond.is_cacheable():
+            self._query_cache[cond] = docs
+
+        return docs
 
     def get(self, cond: Optional[QueryLike]=None, doc_id: Optional[int]=None, doc_ids: Optional[List]=None) -> Optional[Union[Document, List[Document]]]:
         """
@@ -138,7 +161,22 @@ class Table:
 
         :returns: the document(s) or ``None``
         """
-        pass
+        if doc_id is not None:
+            table = self._read_table()
+            if doc_id in table:
+                return self.document_class(table[doc_id], self.document_id_class(doc_id))
+            return None
+        
+        if doc_ids is not None:
+            table = self._read_table()
+            return [self.document_class(table[id], self.document_id_class(id))
+                    for id in doc_ids if id in table]
+        
+        if cond is not None:
+            for doc in self.search(cond):
+                return doc
+        
+        return None
 
     def contains(self, cond: Optional[QueryLike]=None, doc_id: Optional[int]=None) -> bool:
         """
@@ -150,7 +188,10 @@ class Table:
         :param cond: the condition use
         :param doc_id: the document ID to look for
         """
-        pass
+        if doc_id is not None:
+            return doc_id in self._read_table()
+        
+        return self.get(cond) is not None
 
     def update(self, fields: Union[Mapping, Callable[[Mapping], None]], cond: Optional[QueryLike]=None, doc_ids: Optional[Iterable[int]]=None) -> List[int]:
         """
@@ -162,7 +203,19 @@ class Table:
         :param doc_ids: a list of document IDs
         :returns: a list containing the updated document's ID
         """
-        pass
+        updated_ids = []
+        def updater(data):
+            nonlocal updated_ids
+            for doc_id, doc in data.items():
+                if (doc_ids is None or doc_id in doc_ids) and (cond is None or cond(doc)):
+                    if callable(fields):
+                        fields(doc)
+                    else:
+                        doc.update(fields)
+                    updated_ids.append(doc_id)
+        self._update_table(updater)
+        self.clear_cache()
+        return updated_ids
 
     def update_multiple(self, updates: Iterable[Tuple[Union[Mapping, Callable[[Mapping], None]], QueryLike]]) -> List[int]:
         """
@@ -170,7 +223,20 @@ class Table:
 
         :returns: a list containing the updated document's ID
         """
-        pass
+        updated_ids = []
+        def updater(data):
+            nonlocal updated_ids
+            for fields, cond in updates:
+                for doc_id, doc in data.items():
+                    if cond(doc):
+                        if callable(fields):
+                            fields(doc)
+                        else:
+                            doc.update(fields)
+                        updated_ids.append(doc_id)
+        self._update_table(updater)
+        self.clear_cache()
+        return updated_ids
 
     def upsert(self, document: Mapping, cond: Optional[QueryLike]=None) -> List[int]:
         """
@@ -185,7 +251,19 @@ class Table:
         Document with a doc_id
         :returns: a list containing the updated documents' IDs
         """
-        pass
+        if isinstance(document, Document):
+            doc_id = document.doc_id
+            document = dict(document)
+            del document['doc_id']
+            updated = self.update(document, doc_ids=[doc_id])
+            if updated:
+                return updated
+            return [self.insert(document)]
+        
+        updated = self.update(document, cond)
+        if updated:
+            return updated
+        return [self.insert(document)]
 
     def remove(self, cond: Optional[QueryLike]=None, doc_ids: Optional[Iterable[int]]=None) -> List[int]:
         """
@@ -195,13 +273,23 @@ class Table:
         :param doc_ids: a list of document IDs
         :returns: a list containing the removed documents' ID
         """
-        pass
+        removed_ids = []
+        def updater(data):
+            nonlocal removed_ids
+            for doc_id in list(data.keys()):
+                if (doc_ids is None or doc_id in doc_ids) and (cond is None or cond(data[doc_id])):
+                    del data[doc_id]
+                    removed_ids.append(doc_id)
+        self._update_table(updater)
+        self.clear_cache()
+        return removed_ids
 
     def truncate(self) -> None:
         """
         Truncate the table by removing all documents.
         """
-        pass
+        self._update_table(lambda data: data.clear())
+        self.clear_cache()
 
     def count(self, cond: QueryLike) -> int:
         """
@@ -209,34 +297,23 @@ class Table:
 
         :param cond: the condition use
         """
-        pass
+        return len(self.search(cond))
 
     def clear_cache(self) -> None:
         """
         Clear the query cache.
         """
-        pass
-
-    def __len__(self):
-        """
-        Count the total number of documents in this table.
-        """
-        return len(self._read_table())
-
-    def __iter__(self) -> Iterator[Document]:
-        """
-        Iterate over all documents stored in the table.
-
-        :returns: an iterator over all documents.
-        """
-        for doc_id, doc in self._read_table().items():
-            yield self.document_class(doc, self.document_id_class(doc_id))
+        self._query_cache.clear()
 
     def _get_next_id(self):
         """
         Return the ID for a newly inserted document.
         """
-        pass
+        if self._next_id is None:
+            self._next_id = max(self._read_table().keys() or [0]) + 1
+        else:
+            self._next_id += 1
+        return self._next_id
 
     def _read_table(self) -> Dict[str, Mapping]:
         """
@@ -246,7 +323,8 @@ class Table:
         we may not want to convert *all* documents when returning
         only one document for example.
         """
-        pass
+        data = self._storage.read()
+        return data.get(self._name, {}) if data else {}
 
     def _update_table(self, updater: Callable[[Dict[int, Mapping]], None]):
         """
@@ -261,4 +339,8 @@ class Table:
         As a further optimization, we don't convert the documents into the
         document class, as the table data will *not* be returned to the user.
         """
-        pass
+        data = self._storage.read() or {}
+        table_data = data.get(self._name, {})
+        updater(table_data)
+        data[self._name] = table_data
+        self._storage.write(data)
