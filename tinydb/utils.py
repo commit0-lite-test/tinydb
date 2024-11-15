@@ -1,7 +1,7 @@
 """Utility functions for TinyDB."""
 
 from collections import OrderedDict, abc
-from typing import Iterator, TypeVar, Generic, Type, Any, Callable
+from typing import Iterator, TypeVar, Generic, Type, Any, Callable, NoReturn
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -53,7 +53,7 @@ class FrozenDict(dict):
     def __hash__(self) -> int:
         return hash(tuple(sorted(self.items())))
 
-    def _immutable(self, *args: Any, **kwargs: Any) -> None:
+    def _immutable(self, *args: Any, **kwargs: Any) -> NoReturn:
         raise TypeError("FrozenDict is immutable")
 
     __setitem__ = _immutable
@@ -62,6 +62,13 @@ class FrozenDict(dict):
     update = _immutable
     pop = _immutable
     popitem = _immutable
+
+    # Override dict methods to ensure immutability
+    def __setitem__(self, key: Any, value: Any) -> NoReturn:
+        self._immutable()
+
+    def __delitem__(self, key: Any) -> NoReturn:
+        self._immutable()
 
 
 def freeze(obj: Any) -> Any:
