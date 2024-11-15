@@ -2,6 +2,7 @@
 middlewares and implementations.
 """
 
+from typing import Any, Dict, Optional
 from tinydb import Storage
 
 
@@ -15,53 +16,17 @@ class Middleware:
     constructor so the middleware chain can be configured properly.
     """
 
-    def __init__(self, storage_cls) -> None:
+    def __init__(self, storage_cls: Any) -> None:
         self._storage_cls = storage_cls
-        self.storage: Storage = None
+        self.storage: Optional[Storage] = None
 
-    def __call__(self, *args, **kwargs):
-        """Create the storage instance and store it as self.storage.
-
-        Usually a user creates a new TinyDB instance like this::
-
-            TinyDB(storage=StorageClass)
-
-        The storage keyword argument is used by TinyDB this way::
-
-            self.storage = storage(*args, **kwargs)
-
-        As we can see, ``storage(...)`` runs the constructor and returns the
-        new storage instance.
-
-
-        Using Middlewares, the user will call::
-
-                                       The 'real' storage class
-                                       v
-            TinyDB(storage=Middleware(StorageClass))
-                       ^
-                       Already an instance!
-
-        So, when running ``self.storage = storage(*args, **kwargs)`` Python
-        now will call ``__call__`` and TinyDB will expect the return value to
-        be the storage (or Middleware) instance. Returning the instance is
-        simple, but we also got the underlying (*real*) StorageClass as an
-        __init__ argument that still is not an instance.
-        So, we initialize it in __call__ forwarding any arguments we receive
-        from TinyDB (``TinyDB(arg1, kwarg1=value, storage=...)``).
-
-        In case of nested Middlewares, calling the instance as if it was a
-        class results in calling ``__call__`` what initializes the next
-        nested Middleware that itself will initialize the next Middleware and
-        so on.
-        """
+    def __call__(self, *args: Any, **kwargs: Any) -> 'Middleware':
+        """Create the storage instance and store it as self.storage."""
         self.storage = self._storage_cls(*args, **kwargs)
         return self
 
-    def __getattr__(self, name):
-        """Forward all unknown attribute calls to the underlying storage, so we
-        remain as transparent as possible.
-        """
+    def __getattr__(self, name: str) -> Any:
+        """Forward all unknown attribute calls to the underlying storage."""
         return getattr(self.__dict__["storage"], name)
 
 
@@ -75,18 +40,18 @@ class CachingMiddleware(Middleware):
 
     WRITE_CACHE_SIZE = 1000
 
-    def __init__(self, storage_cls):
+    def __init__(self, storage_cls: Any) -> None:
         super().__init__(storage_cls)
-        self.cache = None
+        self.cache: Optional[Dict[str, Any]] = None
         self._cache_modified_count = 0
 
-    def read(self):
+    def read(self) -> Dict[str, Any]:
         """Read data from the cache or underlying storage."""
         if self.cache is None:
             self.cache = self.storage.read()
         return self.cache
 
-    def write(self, data):
+    def write(self, data: Dict[str, Any]) -> None:
         """Write data to the cache and possibly to the underlying storage."""
         self.cache = data
         self._cache_modified_count += 1
@@ -94,13 +59,13 @@ class CachingMiddleware(Middleware):
         if self._cache_modified_count >= self.WRITE_CACHE_SIZE:
             self.flush()
 
-    def flush(self):
+    def flush(self) -> None:
         """Flush all unwritten data to disk."""
         if self.cache is not None:
             self.storage.write(self.cache)
             self._cache_modified_count = 0
 
-    def close(self):
+    def close(self) -> None:
         """Close the storage and flush any unwritten data."""
         self.flush()
         self.storage.close()
