@@ -61,7 +61,12 @@ class JSONStorage(Storage):
     """Store the data in a JSON file."""
 
     def __init__(
-        self, path: str, create_dirs: bool = False, encoding: Optional[str] = None, access_mode: str = "r+", **kwargs: Any
+        self,
+        path: str,
+        create_dirs: bool = False,
+        encoding: Optional[str] = None,
+        access_mode: str = "r+",
+        **kwargs: Any,
     ):
         """Create a new instance.
 
