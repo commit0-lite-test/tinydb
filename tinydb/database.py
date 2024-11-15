@@ -67,28 +67,23 @@ class TinyDB(TableBase):
     default_table_name = "_default"
     default_storage_class = JSONStorage
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Create a new instance of TinyDB."""
         storage = kwargs.pop("storage", self.default_storage_class)
         self._storage: Storage = storage(*args, **kwargs)
         self._opened = True
         self._tables: Dict[str, Table] = {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         args = [
-            "tables={}".format(list(self.tables())),
-            "tables_count={}".format(len(self.tables())),
-            "default_table_documents_count={}".format(self.__len__()),
-            "all_tables_documents_count={}".format(
-                [
-                    "{}={}".format(table, len(self.table(table)))
-                    for table in self.tables()
-                ]
-            ),
+            f"tables={list(self.tables())}",
+            f"tables_count={len(self.tables())}",
+            f"default_table_documents_count={len(self)}",
+            f"all_tables_documents_count={[f'{table}={len(self.table(table))}' for table in self.tables()]}",
         ]
-        return "<{} {}>".format(type(self).__name__, ", ".join(args))
+        return f"<{type(self).__name__} {', '.join(args)}>"
 
-    def table(self, name: str, **kwargs) -> Table:
+    def table(self, name: str, **kwargs: Any) -> Table:
         """Get access to a specific table.
 
         If the table hasn't been accessed yet, a new table instance will be
@@ -168,12 +163,12 @@ class TinyDB(TableBase):
         """
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         """Close the storage instance when leaving a context."""
         if self._opened:
             self.close()
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         """Forward all unknown attribute calls to the default table instance."""
         return getattr(self.table(self.default_table_name), name)
 
@@ -188,4 +183,4 @@ class TinyDB(TableBase):
 
     def __iter__(self) -> Iterator[Document]:
         """Return an iterator for the default table's documents."""
-        return iter(self.table(self.default_table_name))
+        return iter(self.table(self.default_table_name))  # type: ignore
