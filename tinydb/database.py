@@ -1,16 +1,16 @@
-"""
-This module contains the main component of TinyDB: the database.
-"""
+"""This module contains the main component of TinyDB: the database."""
+
 from typing import Dict, Iterator, Set, Type
 from . import JSONStorage
 from .storages import Storage
 from .table import Table, Document
 from .utils import with_typehint
+
 TableBase: Type[Table] = with_typehint(Table)
 
+
 class TinyDB(TableBase):
-    """
-    The main class of TinyDB.
+    """The main class of TinyDB.
 
     The ``TinyDB`` class is responsible for creating the storage class instance
     that will store this database's documents, managing the database
@@ -62,26 +62,34 @@ class TinyDB(TableBase):
     :param storage: The class of the storage to use. Will be initialized
                     with ``args`` and ``kwargs``.
     """
+
     table_class = Table
-    default_table_name = '_default'
+    default_table_name = "_default"
     default_storage_class = JSONStorage
 
     def __init__(self, *args, **kwargs) -> None:
-        """
-        Create a new instance of TinyDB.
-        """
-        storage = kwargs.pop('storage', self.default_storage_class)
+        """Create a new instance of TinyDB."""
+        storage = kwargs.pop("storage", self.default_storage_class)
         self._storage: Storage = storage(*args, **kwargs)
         self._opened = True
         self._tables: Dict[str, Table] = {}
 
     def __repr__(self):
-        args = ['tables={}'.format(list(self.tables())), 'tables_count={}'.format(len(self.tables())), 'default_table_documents_count={}'.format(self.__len__()), 'all_tables_documents_count={}'.format(['{}={}'.format(table, len(self.table(table))) for table in self.tables()])]
-        return '<{} {}>'.format(type(self).__name__, ', '.join(args))
+        args = [
+            "tables={}".format(list(self.tables())),
+            "tables_count={}".format(len(self.tables())),
+            "default_table_documents_count={}".format(self.__len__()),
+            "all_tables_documents_count={}".format(
+                [
+                    "{}={}".format(table, len(self.table(table)))
+                    for table in self.tables()
+                ]
+            ),
+        ]
+        return "<{} {}>".format(type(self).__name__, ", ".join(args))
 
     def table(self, name: str, **kwargs) -> Table:
-        """
-        Get access to a specific table.
+        """Get access to a specific table.
 
         If the table hasn't been accessed yet, a new table instance will be
         created using the :attr:`~tinydb.database.TinyDB.table_class` class.
@@ -99,29 +107,25 @@ class TinyDB(TableBase):
         return self._tables[name]
 
     def tables(self) -> Set[str]:
-        """
-        Get the names of all tables in the database.
+        """Get the names of all tables in the database.
 
         :returns: a set of table names
         """
         return set(self._tables.keys())
 
     def drop_tables(self) -> None:
-        """
-        Drop all tables from the database. **CANNOT BE REVERSED!**
-        """
+        """Drop all tables from the database. **CANNOT BE REVERSED!**"""
         self._tables.clear()
         self._storage.write({})
 
     def drop_table(self, name: str) -> None:
-        """
-        Drop a specific table from the database. **CANNOT BE REVERSED!**
+        """Drop a specific table from the database. **CANNOT BE REVERSED!**
 
         :param name: The name of the table to drop.
         """
         if name in self._tables:
             del self._tables[name]
-        
+
         data = self._storage.read() or {}
         if name in data:
             del data[name]
@@ -129,8 +133,7 @@ class TinyDB(TableBase):
 
     @property
     def storage(self) -> Storage:
-        """
-        Get the storage instance used for this TinyDB instance.
+        """Get the storage instance used for this TinyDB instance.
 
         :return: This instance's storage
         :rtype: Storage
@@ -138,8 +141,7 @@ class TinyDB(TableBase):
         return self._storage
 
     def close(self) -> None:
-        """
-        Close the database.
+        """Close the database.
 
         This may be needed if the storage instance used for this database
         needs to perform cleanup operations like closing file handles.
@@ -156,8 +158,7 @@ class TinyDB(TableBase):
         self._opened = False
 
     def __enter__(self):
-        """
-        Use the database as a context manager.
+        """Use the database as a context manager.
 
         Using the database as a context manager ensures that the
         :meth:`~tinydb.database.TinyDB.close` method is called upon leaving
@@ -168,21 +169,16 @@ class TinyDB(TableBase):
         return self
 
     def __exit__(self, *args):
-        """
-        Close the storage instance when leaving a context.
-        """
+        """Close the storage instance when leaving a context."""
         if self._opened:
             self.close()
 
     def __getattr__(self, name):
-        """
-        Forward all unknown attribute calls to the default table instance.
-        """
+        """Forward all unknown attribute calls to the default table instance."""
         return getattr(self.table(self.default_table_name), name)
 
     def __len__(self):
-        """
-        Get the total number of documents in the default table.
+        """Get the total number of documents in the default table.
 
         >>> db = TinyDB('db.json')
         >>> len(db)
@@ -191,7 +187,5 @@ class TinyDB(TableBase):
         return len(self.table(self.default_table_name))
 
     def __iter__(self) -> Iterator[Document]:
-        """
-        Return an iterator for the default table's documents.
-        """
+        """Return an iterator for the default table's documents."""
         return iter(self.table(self.default_table_name))
