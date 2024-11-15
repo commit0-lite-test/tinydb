@@ -329,11 +329,11 @@ class Query(QueryInstance):
         """
         if isinstance(cond, QueryInstance):
 
-            def test(value):
+            def test(value: Any) -> bool:
                 return any(cond(item) for item in value)
         else:
 
-            def test(value):
+            def test(value: Any) -> bool:
                 return any(item in cond for item in value)
 
         return self._generate_test(test, ("any", self._path, freeze(cond)))
@@ -359,11 +359,11 @@ class Query(QueryInstance):
         """
         if isinstance(cond, QueryInstance):
 
-            def test(value):
+            def test(value: Any) -> bool:
                 return all(cond(item) for item in value)
         else:
 
-            def test(value):
+            def test(value: Any) -> bool:
                 return all(item in value for item in cond)
 
         return self._generate_test(test, ("all", self._path, freeze(cond)))
