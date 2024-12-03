@@ -36,6 +36,48 @@ class TinyDB(TableBase):
         if self.default_table_name not in self._tables:
             self._tables[self.default_table_name] = self.table_class(self._storage, self.default_table_name)
 
+    def __len__(self):
+        return len(self.table(self.default_table_name))
+
+    def __iter__(self):
+        return iter(self.table(self.default_table_name))
+
+    def insert(self, document: Mapping) -> int:
+        """Insert a document into the default table."""
+        return self.table(self.default_table_name).insert(document)
+
+    def insert_multiple(self, documents: Iterable[Mapping]) -> List[int]:
+        """Insert multiple documents into the default table."""
+        return self.table(self.default_table_name).insert_multiple(documents)
+
+    def all(self) -> List[Document]:
+        """Get all documents from the default table."""
+        return self.table(self.default_table_name).all()
+
+    def search(self, cond: QueryLike) -> List[Document]:
+        """Search for documents in the default table."""
+        return self.table(self.default_table_name).search(cond)
+
+    def count(self, cond: QueryLike) -> int:
+        """Count documents in the default table."""
+        return self.table(self.default_table_name).count(cond)
+
+    def contains(self, cond: Optional[QueryLike] = None, doc_id: Optional[int] = None) -> bool:
+        """Check if the default table contains a matching document."""
+        return self.table(self.default_table_name).contains(cond, doc_id)
+
+    def get(self, cond: Optional[QueryLike] = None, doc_id: Optional[int] = None) -> Optional[Document]:
+        """Get one document from the default table."""
+        return self.table(self.default_table_name).get(cond, doc_id)
+
+    def update(self, fields: Union[Mapping, Callable[[Mapping], None]], cond: Optional[QueryLike] = None, doc_ids: Optional[Iterable[int]] = None) -> List[int]:
+        """Update documents in the default table."""
+        return self.table(self.default_table_name).update(fields, cond, doc_ids)
+
+    def remove(self, cond: Optional[QueryLike] = None, doc_ids: Optional[Iterable[int]] = None) -> List[int]:
+        """Remove documents from the default table."""
+        return self.table(self.default_table_name).remove(cond, doc_ids)
+
     def __getattr__(self, name: str) -> Any:
         """Forward all unknown attribute calls to the default table instance."""
         if name in self.__dict__:

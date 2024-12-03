@@ -120,9 +120,10 @@ class Table:
 
     def all(self) -> List[Document]:
         """Get all documents stored in the table."""
+        table_data = self._read_table()
         return [
             self.document_class(doc, self.document_id_class(int(doc_id)))
-            for doc_id, doc in self._read_table().items()
+            for doc_id, doc in table_data.items()
         ]
 
     def search(self, cond: QueryLike) -> List[Document]:
