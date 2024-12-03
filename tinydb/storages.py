@@ -68,51 +68,35 @@ class JSONStorage(Storage):
         access_mode: str = "r+",
         **kwargs: Any,
     ):
-        """Create a new instance.
-
-        Also creates the storage file, if it doesn't exist and the access mode
-        is appropriate for writing.
-
-        Note: Using an access mode other than `r` or `r+` will probably lead to
-        data loss or data corruption!
-
-        :param path: Where to store the JSON data.
-        :param access_mode: mode in which the file is opened (r, r+)
-        :type access_mode: str
-        """
+        """Create a new instance."""
         super().__init__()
+        self.path = path
         self._mode = access_mode
         self.kwargs = kwargs
+        self.encoding = encoding
         if access_mode not in ("r", "rb", "r+", "rb+"):
             warnings.warn(
                 "Using an `access_mode` other than 'r', 'rb', 'r+' or 'rb+' can cause data loss or corruption"
             )
         if any([character in self._mode for character in ("+", "w", "a")]):
             touch(path, create_dirs=create_dirs)
-        self._handle = open(path, mode=self._mode, encoding=encoding)
 
     def read(self) -> Optional[Dict[str, Dict[str, Any]]]:
         """Read the current state from the JSON file."""
-        # Move to the beginning of the file
-        self._handle.seek(0)
-
         try:
-            return json.load(self._handle)
+            with open(self.path, 'r', encoding=self.encoding) as handle:
+                return json.load(handle)
         except ValueError:
             return None
 
     def write(self, data: Dict[str, Dict[str, Any]]) -> None:
         """Write the current state to the JSON file."""
-        # Move to the beginning of the file and truncate it
-        self._handle.seek(0)
-        self._handle.truncate()
-
-        json.dump(data, self._handle, **self.kwargs)
-        self._handle.flush()
+        with open(self.path, 'w', encoding=self.encoding) as handle:
+            json.dump(data, handle, **self.kwargs)
 
     def close(self) -> None:
         """Close the file handle."""
-        self._handle.close()
+        pass  # No need to close anything as we're using 'with' statements
 
 
 class MemoryStorage(Storage):

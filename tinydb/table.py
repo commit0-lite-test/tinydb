@@ -95,23 +95,14 @@ class Table:
         return self._storage
 
     def insert(self, document: Mapping) -> int:
-        """Insert a new document into the table.
-
-        :param document: the document to insert
-        :returns: the inserted document's ID
-        """
+        """Insert a new document into the table."""
         doc_id = self._get_next_id()
         self._update_table(lambda data: data.update({doc_id: document}))
         self.clear_cache()
-        print(f"Inserted document with ID {doc_id}: {document}")  # Debug print
         return doc_id
 
     def insert_multiple(self, documents: Iterable[Mapping]) -> List[int]:
-        """Insert multiple documents into the table.
-
-        :param documents: an Iterable of documents to insert
-        :returns: a list containing the inserted documents' IDs
-        """
+        """Insert multiple documents into the table."""
         doc_ids = []
 
         def updater(data: Dict[int, Mapping]) -> None:
@@ -120,45 +111,32 @@ class Table:
                 doc_id = self._get_next_id()
                 data[doc_id] = document
                 doc_ids.append(doc_id)
-                print(f"Inserted document with ID {doc_id}: {document}")  # Debug print
 
         self._update_table(updater)
         self.clear_cache()
         return doc_ids
 
     def all(self) -> List[Document]:
-        """Get all documents stored in the table.
-
-        :returns: a list with all documents.
-        """
-        documents = [
+        """Get all documents stored in the table."""
+        return [
             self.document_class(doc, self.document_id_class(doc_id))
             for doc_id, doc in self._read_table().items()
         ]
-        print(f"All documents: {documents}")  # Debug print
-        return documents
 
     def search(self, cond: QueryLike) -> List[Document]:
-        """Search for all documents matching a 'where' cond.
-
-        :param cond: the condition to check against
-        :returns: list of matching documents
-        """
+        """Search for all documents matching a 'where' cond."""
         if cond in self._query_cache:
             return self._query_cache[cond]
 
-        docs = []
-        for doc_id, doc in self._read_table().items():
-            try:
-                if cond(doc):
-                    docs.append(self.document_class(doc, self.document_id_class(doc_id)))
-            except Exception as e:
-                print(f"Error evaluating condition for document {doc_id}: {e}")
+        docs = [
+            self.document_class(doc, self.document_id_class(doc_id))
+            for doc_id, doc in self._read_table().items()
+            if cond(doc)
+        ]
 
         if hasattr(cond, "is_cacheable") and cond.is_cacheable():
             self._query_cache[cond] = docs
 
-        print(f"Search results for {cond}: {docs}")  # Debug print
         return docs
 
     def get(
