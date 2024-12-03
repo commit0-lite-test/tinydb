@@ -10,14 +10,25 @@ TableBase: Type[Table] = with_typehint(Table)
 
 
 class TinyDB(TableBase):
+    default_storage_class = JSONStorage
+    table_class = Table
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Create a new instance of TinyDB."""
+        self.default_table_name = "_default"
         storage_class = kwargs.pop("storage", self.default_storage_class)
         self._storage: Storage = storage_class(*args, **kwargs)
         self._opened = True
         self._tables: Dict[str, Table] = {}
         self._default_table: Optional[Table] = None
-        self.default_table_name = "_default"
+
+    def __getattr__(self, name: str) -> Any:
+        """Forward all unknown attribute calls to the default table instance."""
+        if name in self.__dict__:
+            return self.__dict__[name]
+        if self._default_table is None:
+            self._default_table = self.table(self.default_table_name)
+        return getattr(self._default_table, name)
 
     def table(self, name: str, **kwargs: Any) -> Table:
         """Get access to a specific table."""
@@ -56,22 +67,10 @@ class TinyDB(TableBase):
         self._storage.close()
         self._opened = False
 
-    def __getattr__(self, name: str) -> Any:
-        """Forward all unknown attribute calls to the default table instance."""
-        if name == 'default_table_name':
-            return self.__dict__['default_table_name']
-        if self._default_table is None:
-            self._default_table = self.table(self.default_table_name)
-        return getattr(self._default_table, name)
-
-    def __len__(self):
+    def __len__(self) -> int:
         """Get the total number of documents in the default table."""
-        if self._default_table is None:
-            self._default_table = self.table(self.default_table_name)
-        return len(self._default_table)
+        return len(self.table(self.default_table_name))
 
     def __iter__(self) -> Iterator[Document]:
         """Return an iterator for the default table's documents."""
-        if self._default_table is None:
-            self._default_table = self.table(self.default_table_name)
-        return iter(self._default_table)
+        return iter(self.table(self.default_table_name))

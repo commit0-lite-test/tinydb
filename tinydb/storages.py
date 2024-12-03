@@ -90,11 +90,13 @@ class JSONStorage(Storage):
         """Read the current state from the JSON file."""
         try:
             with open(self.path, 'r', encoding=self.encoding) as handle:
-                return json.load(handle)
+                content = handle.read()
+                if not content:
+                    return None
+                return json.loads(content)
         except FileNotFoundError:
             return None
-        except ValueError:
-            # If the file is empty or contains invalid JSON, return None
+        except json.JSONDecodeError:
             return None
 
     def write(self, data: Dict[str, Dict[str, Any]]) -> None:
