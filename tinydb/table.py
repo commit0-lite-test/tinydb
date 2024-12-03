@@ -103,6 +103,7 @@ class Table:
         doc_id = self._get_next_id()
         self._update_table(lambda data: data.update({doc_id: document}))
         self.clear_cache()
+        print(f"Inserted document with ID {doc_id}: {document}")  # Debug print
         return doc_id
 
     def insert_multiple(self, documents: Iterable[Mapping]) -> List[int]:
@@ -119,6 +120,7 @@ class Table:
                 doc_id = self._get_next_id()
                 data[doc_id] = document
                 doc_ids.append(doc_id)
+                print(f"Inserted document with ID {doc_id}: {document}")  # Debug print
 
         self._update_table(updater)
         self.clear_cache()
@@ -129,10 +131,12 @@ class Table:
 
         :returns: a list with all documents.
         """
-        return [
+        documents = [
             self.document_class(doc, self.document_id_class(doc_id))
             for doc_id, doc in self._read_table().items()
         ]
+        print(f"All documents: {documents}")  # Debug print
+        return documents
 
     def search(self, cond: QueryLike) -> List[Document]:
         """Search for all documents matching a 'where' cond.
@@ -152,6 +156,7 @@ class Table:
         if hasattr(cond, "is_cacheable") and cond.is_cacheable():
             self._query_cache[cond] = docs
 
+        print(f"Search results for {cond}: {docs}")  # Debug print
         return docs
 
     def get(
@@ -175,24 +180,48 @@ class Table:
         if doc_id is not None:
             table = self._read_table()
             if doc_id in table:
-                return self.document_class(
+                document = self.document_class(
                     table[doc_id], self.document_id_class(doc_id)
                 )
+                print(f"Get document by ID {doc_id}: {document}")  # Debug print
+                return document
+            print(f"Document with ID {doc_id} not found")  # Debug print
             return None
 
         if doc_ids is not None:
             table = self._read_table()
-            return [
+            documents = [
                 self.document_class(table[id], self.document_id_class(id))
                 for id in doc_ids
                 if id in table
             ]
+            print(f"Get documents by IDs {doc_ids}: {documents}")  # Debug print
+            return documents
 
         if cond is not None:
             docs = self.search(cond)
-            return docs[0] if docs else None
+            result = docs[0] if docs else None
+            print(f"Get document by condition {cond}: {result}")  # Debug print
+            return result
 
+        print("Get called without any parameters")  # Debug print
         return None
+
+    def _read_table(self) -> Dict[str, Mapping]:
+        """Read the table data from the underlying storage."""
+        data = self._storage.read()
+        table_data = data.get(self._name, {}) if data else {}
+        print(f"Read table data: {table_data}")  # Debug print
+        return table_data
+
+    def _update_table(self, updater: Callable[[Dict[int, Mapping]], None]) -> None:
+        """Perform a table update operation."""
+        data = self._storage.read() or {}
+        table_data = data.get(self._name, {})
+        updater({int(k): v for k, v in table_data.items()})
+        data[self._name] = table_data
+        self._storage.write(data)
+        print(f"Updated table data: {table_data}")  # Debug print
 
     def contains(
         self, cond: Optional[QueryLike] = None, doc_id: Optional[int] = None
