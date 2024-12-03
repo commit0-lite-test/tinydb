@@ -46,6 +46,11 @@ class LRUCache(abc.MutableMapping, Generic[K, V]):
     def __iter__(self) -> Iterator[K]:
         return iter(self.cache)
 
+    @property
+    def lru(self) -> bool:
+        """Return True if the cache is at capacity, False otherwise."""
+        return self.capacity is not None and len(self.cache) >= self.capacity
+
 
 class FrozenDict(dict):
     """An immutable dictionary."""

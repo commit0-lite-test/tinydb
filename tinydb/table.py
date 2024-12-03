@@ -97,7 +97,7 @@ class Table:
     def insert(self, document: Mapping) -> int:
         """Insert a new document into the table."""
         doc_id = self._get_next_id()
-        self._update_table(lambda data: data.update({doc_id: document}))
+        self._update_table(lambda data: data.update({str(doc_id): document}))
         self.clear_cache()
         return doc_id
 
@@ -105,11 +105,11 @@ class Table:
         """Insert multiple documents into the table."""
         doc_ids = []
 
-        def updater(data: Dict[int, Mapping]) -> None:
+        def updater(data: Dict[str, Mapping]) -> None:
             nonlocal doc_ids
             for document in documents:
                 doc_id = self._get_next_id()
-                data[doc_id] = document
+                data[str(doc_id)] = document
                 doc_ids.append(doc_id)
 
         self._update_table(updater)
@@ -129,7 +129,7 @@ class Table:
             return self._query_cache[cond]
 
         docs = [
-            self.document_class(doc, self.document_id_class(doc_id))
+            self.document_class(doc, self.document_id_class(int(doc_id)))
             for doc_id, doc in self._read_table().items()
             if cond(doc)
         ]
@@ -344,14 +344,11 @@ class Table:
 
     def _get_next_id(self) -> int:
         """Return the ID for a newly inserted document."""
-        if self._next_id is None:
-            table = self._read_table()
-            if table:
-                self._next_id = max(int(k) for k in table.keys()) + 1
-            else:
-                self._next_id = 1
+        table = self._read_table()
+        if table:
+            self._next_id = max(int(k) for k in table.keys()) + 1
         else:
-            self._next_id += 1
+            self._next_id = 1
         return self._next_id
 
     def _read_table(self) -> Dict[str, Mapping]:
@@ -381,3 +378,7 @@ class Table:
         updater({int(k): v for k, v in table_data.items()})
         data[self._name] = table_data
         self._storage.write(data)
+    def __iter__(self) -> Iterator[Document]:
+        """Iterate over all documents in the table."""
+        for doc_id, doc in self._read_table().items():
+            yield self.document_class(doc, self.document_id_class(int(doc_id)))
