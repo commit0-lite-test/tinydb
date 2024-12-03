@@ -189,8 +189,8 @@ class Table:
             ]
 
         if cond is not None:
-            for doc in self.search(cond):
-                return doc
+            docs = self.search(cond)
+            return docs[0] if docs else None
 
         return None
 
