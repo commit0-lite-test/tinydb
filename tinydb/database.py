@@ -12,12 +12,11 @@ TableBase: Type[Table] = with_typehint(Table)
 class TinyDB(TableBase):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Create a new instance of TinyDB."""
-        storage = kwargs.pop("storage", self.default_storage_class)
-        self._storage: Storage = storage(*args, **kwargs)
+        storage_class = kwargs.pop("storage", self.default_storage_class)
+        self._storage: Storage = storage_class(*args, **kwargs)
         self._opened = True
         self._tables: Dict[str, Table] = {}
-        # Ensure the default table is created
-        self.table(self.default_table_name)
+        self._default_table: Optional[Table] = None
 
     def table(self, name: str, **kwargs: Any) -> Table:
         """Get access to a specific table."""
@@ -37,12 +36,15 @@ class TinyDB(TableBase):
     def drop_tables(self) -> None:
         """Drop all tables from the database."""
         self._tables.clear()
+        self._default_table = None
         self._storage.write({})
 
     def drop_table(self, name: str) -> None:
         """Drop a specific table from the database."""
         if name in self._tables:
             del self._tables[name]
+        if self._default_table and self._default_table.name == name:
+            self._default_table = None
         table_data = self._storage.read() or {}
         if name in table_data:
             del table_data[name]
@@ -55,12 +57,18 @@ class TinyDB(TableBase):
 
     def __getattr__(self, name: str) -> Any:
         """Forward all unknown attribute calls to the default table instance."""
-        return getattr(self.table(self.default_table_name), name)
+        if self._default_table is None:
+            self._default_table = self.table(self.default_table_name)
+        return getattr(self._default_table, name)
 
     def __len__(self):
         """Get the total number of documents in the default table."""
-        return len(self.table(self.default_table_name))
+        if self._default_table is None:
+            self._default_table = self.table(self.default_table_name)
+        return len(self._default_table)
 
     def __iter__(self) -> Iterator[Document]:
         """Return an iterator for the default table's documents."""
-        return iter(self.table(self.default_table_name))
+        if self._default_table is None:
+            self._default_table = self.table(self.default_table_name)
+        return iter(self._default_table)

@@ -74,6 +74,11 @@ class JSONStorage(Storage):
         self._mode = access_mode
         self.kwargs = kwargs
         self.encoding = encoding
+        self.json_kwargs = {
+            'sort_keys': kwargs.get('sort_keys', None),
+            'indent': kwargs.get('indent', None),
+            'separators': kwargs.get('separators', None),
+        }
         if access_mode not in ("r", "rb", "r+", "rb+"):
             warnings.warn(
                 "Using an `access_mode` other than 'r', 'rb', 'r+' or 'rb+' can cause data loss or corruption"
@@ -86,13 +91,13 @@ class JSONStorage(Storage):
         try:
             with open(self.path, 'r', encoding=self.encoding) as handle:
                 return json.load(handle)
-        except ValueError:
+        except (ValueError, FileNotFoundError):
             return None
 
     def write(self, data: Dict[str, Dict[str, Any]]) -> None:
         """Write the current state to the JSON file."""
         with open(self.path, 'w', encoding=self.encoding) as handle:
-            json.dump(data, handle, **self.kwargs)
+            json.dump(data, handle, **self.json_kwargs)
 
     def close(self) -> None:
         """Close the file handle."""
