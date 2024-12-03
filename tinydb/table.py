@@ -336,7 +336,11 @@ class Table:
     def _get_next_id(self) -> int:
         """Return the ID for a newly inserted document."""
         if self._next_id is None:
-            self._next_id = max((int(k) for k in self._read_table().keys()) or [0]) + 1
+            table = self._read_table()
+            if table:
+                self._next_id = max(int(k) for k in table.keys()) + 1
+            else:
+                self._next_id = 1
         else:
             self._next_id += 1
         return self._next_id
