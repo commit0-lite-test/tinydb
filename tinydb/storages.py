@@ -91,7 +91,10 @@ class JSONStorage(Storage):
         try:
             with open(self.path, 'r', encoding=self.encoding) as handle:
                 return json.load(handle)
-        except (ValueError, FileNotFoundError):
+        except FileNotFoundError:
+            return None
+        except ValueError:
+            # If the file is empty or contains invalid JSON, return None
             return None
 
     def write(self, data: Dict[str, Dict[str, Any]]) -> None:

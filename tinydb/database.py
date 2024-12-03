@@ -17,6 +17,7 @@ class TinyDB(TableBase):
         self._opened = True
         self._tables: Dict[str, Table] = {}
         self._default_table: Optional[Table] = None
+        self.default_table_name = "_default"
 
     def table(self, name: str, **kwargs: Any) -> Table:
         """Get access to a specific table."""
@@ -57,6 +58,8 @@ class TinyDB(TableBase):
 
     def __getattr__(self, name: str) -> Any:
         """Forward all unknown attribute calls to the default table instance."""
+        if name == 'default_table_name':
+            return self.__dict__['default_table_name']
         if self._default_table is None:
             self._default_table = self.table(self.default_table_name)
         return getattr(self._default_table, name)
