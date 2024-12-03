@@ -1,13 +1,16 @@
 """Contains the main component of TinyDB: the database."""
 
-from typing import Dict, Iterator, Set, Type, Any
+from typing import Dict, Iterator, Set, Type, Any, Mapping, Iterable, List, Union, Callable, Optional
 from . import JSONStorage
 from .storages import Storage
 from .table import Table, Document
 from .utils import with_typehint
+from .queries import QueryLike
 
 TableBase: Type[Table] = with_typehint(Table)
 
+
+TableBase: Type[Table] = with_typehint(Table)
 
 class TinyDB(TableBase):
     default_storage_class = JSONStorage
