@@ -147,11 +147,13 @@ class Table:
         if cond in self._query_cache:
             return self._query_cache[cond]
 
-        docs = [
-            self.document_class(doc, self.document_id_class(doc_id))
-            for doc_id, doc in self._read_table().items()
-            if cond(doc)
-        ]
+        docs = []
+        for doc_id, doc in self._read_table().items():
+            try:
+                if cond(doc):
+                    docs.append(self.document_class(doc, self.document_id_class(doc_id)))
+            except Exception as e:
+                print(f"Error evaluating condition for document {doc_id}: {e}")
 
         if hasattr(cond, "is_cacheable") and cond.is_cacheable():
             self._query_cache[cond] = docs

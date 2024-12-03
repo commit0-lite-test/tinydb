@@ -389,14 +389,21 @@ class Query(QueryInstance):
         """
         return self._generate_test(lambda _: True, ("noop",), allow_empty_path=True)
 
-    def map(self, fn: Callable[[Any], Any]) -> "Query":
+    def map(self, fn: Callable[[Any], Any]) -> "QueryInstance":
         """Add a function to the query path. Similar to __getattr__ but for
         arbitrary functions.
         """
-        query = type(self)()
-        query._path = self._path + (fn,)
-        query._hash = ("path", query._path) if self.is_cacheable() else None
-        return query
+        return self._generate_test(
+            lambda value: fn(value),
+            ("map", self._path, fn)
+        )
+
+    def fragment(self, fragment: Mapping) -> "QueryInstance":
+        """Match documents that contain the given fragment."""
+        return self._generate_test(
+            lambda value: all(key in value and value[key] == fragment[key] for key in fragment),
+            ("fragment", self._path, freeze(fragment))
+        )
 
 
 def where(key: str) -> Query:
