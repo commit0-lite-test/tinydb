@@ -47,9 +47,13 @@ class LRUCache(abc.MutableMapping, Generic[K, V]):
         return iter(self.cache)
 
     @property
-    def lru(self) -> bool:
-        """Return True if the cache is at capacity, False otherwise."""
-        return self.capacity is not None and len(self.cache) >= self.capacity
+    def lru(self) -> List[K]:
+        """Return a list of keys in the cache, from least to most recently used."""
+        return list(self.cache.keys())
+
+    def clear(self) -> None:
+        """Clear the cache."""
+        self.cache.clear()
 
 
 class FrozenDict(dict):
