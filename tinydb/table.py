@@ -104,12 +104,13 @@ class Table:
     def insert_multiple(self, documents: Iterable[Mapping]) -> List[int]:
         """Insert multiple documents into the table."""
         doc_ids = []
-        table_data = self._read_table()
-        for document in documents:
-            doc_id = self._get_next_id()
-            table_data[str(doc_id)] = document
-            doc_ids.append(doc_id)
-        self._update_table(lambda data: data.update(table_data))
+        def updater(data):
+            nonlocal doc_ids
+            for document in documents:
+                doc_id = self._get_next_id()
+                data[str(doc_id)] = document
+                doc_ids.append(doc_id)
+        self._update_table(updater)
         self.clear_cache()
         return doc_ids
 
@@ -126,11 +127,11 @@ class Table:
             return self._query_cache[cond]
 
         table_data = self._read_table()
-        docs = [
-            self.document_class(doc, self.document_id_class(int(doc_id)))
-            for doc_id, doc in table_data.items()
-            if cond(doc)
-        ]
+        docs = []
+        for doc_id, doc in table_data.items():
+            if cond(doc):
+                doc_with_id = dict(doc, doc_id=int(doc_id))
+                docs.append(self.document_class(doc_with_id, self.document_id_class(int(doc_id))))
 
         if hasattr(cond, "is_cacheable") and cond.is_cacheable():
             self._query_cache[cond] = docs
@@ -344,8 +345,10 @@ class Table:
         """Return the ID for a newly inserted document."""
         table = self._read_table()
         if table:
-            return max(int(k) for k in table.keys()) + 1
-        return 1
+            self._next_id = max(int(k) for k in table.keys()) + 1
+        else:
+            self._next_id = 1
+        return self._next_id
 
     def _read_table(self) -> Dict[str, Mapping]:
         """Read the table data from the underlying storage.

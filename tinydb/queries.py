@@ -402,6 +402,19 @@ class Query(QueryInstance):
         query._hash = None  # Make map queries non-cacheable
         return query
 
+    def __eq__(self, rhs: Any) -> QueryInstance:
+        """Test a dict value for equality.
+
+        >>> Query().f1 == 42
+
+        :param rhs: The value to compare against
+        """
+        return self._generate_test(
+            lambda value: value == rhs,
+            ("==", self._path, freeze(rhs)),
+            allow_empty_path=True
+        )
+
     def fragment(self, fragment: Mapping) -> "QueryInstance":
         """Match documents that contain the given fragment."""
         return self._generate_test(
