@@ -1,6 +1,6 @@
 """Implements tables, the central place for accessing and manipulating data in TinyDB."""
 
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Union, Tuple
+from typing import Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Union, Tuple
 from .queries import QueryLike
 from .storages import Storage
 from .utils import LRUCache
