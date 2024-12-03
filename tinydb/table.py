@@ -101,7 +101,7 @@ class Table:
     def insert(self, document: Mapping) -> int:
         """Insert a new document into the table."""
         doc_id = self._get_next_id()
-        self._update_table(lambda data: data.update({str(doc_id): document}))
+        self._update_table(lambda data: data.update({str(doc_id): dict(document)}))
         self.clear_cache()
         return doc_id
 
@@ -112,7 +112,7 @@ class Table:
             nonlocal doc_ids
             for document in documents:
                 doc_id = self._get_next_id()
-                data[str(doc_id)] = document
+                data[str(doc_id)] = dict(document)
                 doc_ids.append(doc_id)
         self._update_table(updater)
         self.clear_cache()
@@ -134,8 +134,8 @@ class Table:
         docs = []
         for doc_id, doc in table_data.items():
             if cond(doc):
-                doc_with_id = dict(doc, doc_id=int(doc_id))
-                docs.append(self.document_class(doc_with_id, self.document_id_class(int(doc_id))))
+                doc_with_id = self.document_class(doc, self.document_id_class(int(doc_id)))
+                docs.append(doc_with_id)
 
         if hasattr(cond, "is_cacheable") and cond.is_cacheable():
             self._query_cache[cond] = docs

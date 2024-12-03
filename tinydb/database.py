@@ -21,12 +21,20 @@ class TinyDB(TableBase):
         self._opened = True
         self._tables: Dict[str, Table] = {}
         self._default_table: Optional[Table] = None
+        self._load_tables()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    def _load_tables(self):
+        data = self._storage.read() or {}
+        for table_name in data.keys():
+            self._tables[table_name] = self.table_class(self._storage, table_name)
+        if self.default_table_name not in self._tables:
+            self._tables[self.default_table_name] = self.table_class(self._storage, self.default_table_name)
 
     def __getattr__(self, name: str) -> Any:
         """Forward all unknown attribute calls to the default table instance."""
