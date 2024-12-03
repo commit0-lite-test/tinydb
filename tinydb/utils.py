@@ -1,7 +1,7 @@
 """Utility functions for TinyDB."""
 
 from collections import OrderedDict, abc
-from typing import Iterator, TypeVar, Generic, Type, Any, Callable, NoReturn
+from typing import Iterator, TypeVar, Generic, Type, Any, Callable, NoReturn, List
 
 K = TypeVar("K")
 V = TypeVar("V")
