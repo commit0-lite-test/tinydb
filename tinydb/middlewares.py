@@ -54,12 +54,11 @@ class CachingMiddleware(Middleware):
         return self.cache
 
     def write(self, data: Dict[str, Any]) -> None:
-        """Write data to the cache and possibly to the underlying storage."""
+        """Write data to the cache and to the underlying storage."""
         self.cache = data
-        self._cache_modified_count += 1
-
-        if self._cache_modified_count >= self.WRITE_CACHE_SIZE:
-            self.flush()
+        if self.storage is not None:
+            self.storage.write(data)
+        self._cache_modified_count = 0
 
     def flush(self) -> None:
         """Flush all unwritten data to disk."""
@@ -69,7 +68,8 @@ class CachingMiddleware(Middleware):
 
     def close(self) -> None:
         """Close the storage and flush any unwritten data."""
-        self.flush()
+        if self.cache is not None:
+            self.write(self.cache)  # Write the cache to storage before closing
         if self.storage is not None:
             self.storage.close()
         self.cache = None  # Reset the cache when closing
