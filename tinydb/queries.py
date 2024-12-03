@@ -179,6 +179,7 @@ class Query(QueryInstance):
 
         :param test: The test the query executes.
         :param hashval: The hash of the query.
+        :param allow_empty_path: Whether to allow an empty path.
         :return: A :class:`~tinydb.queries.QueryInstance` object
         """
         if not self._path and not allow_empty_path:
@@ -187,7 +188,10 @@ class Query(QueryInstance):
         def runner(value: Any) -> bool:
             try:
                 for part in self._path:
-                    value = value[part]
+                    if callable(part):
+                        value = part(value)
+                    else:
+                        value = value[part]
                 return test(value)
             except (KeyError, TypeError):
                 return False
@@ -389,20 +393,21 @@ class Query(QueryInstance):
         """
         return self._generate_test(lambda _: True, ("noop",), allow_empty_path=True)
 
-    def map(self, fn: Callable[[Any], Any]) -> "QueryInstance":
+    def map(self, fn: Callable[[Any], Any]) -> "Query":
         """Add a function to the query path. Similar to __getattr__ but for
         arbitrary functions.
         """
-        return self._generate_test(
-            lambda value: fn(value),
-            ("map", self._path, fn)
-        )
+        query = type(self)()
+        query._path = self._path + (fn,)
+        query._hash = ("map", query._path) if self.is_cacheable() else None
+        return query
 
     def fragment(self, fragment: Mapping) -> "QueryInstance":
         """Match documents that contain the given fragment."""
         return self._generate_test(
             lambda value: all(key in value and value[key] == fragment[key] for key in fragment),
-            ("fragment", self._path, freeze(fragment))
+            ("fragment", self._path, freeze(fragment)),
+            allow_empty_path=True
         )
 
 
