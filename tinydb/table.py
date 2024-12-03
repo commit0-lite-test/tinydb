@@ -104,15 +104,12 @@ class Table:
     def insert_multiple(self, documents: Iterable[Mapping]) -> List[int]:
         """Insert multiple documents into the table."""
         doc_ids = []
-
-        def updater(data: Dict[str, Mapping]) -> None:
-            nonlocal doc_ids
-            for document in documents:
-                doc_id = self._get_next_id()
-                data[str(doc_id)] = document
-                doc_ids.append(doc_id)
-
-        self._update_table(updater)
+        table_data = self._read_table()
+        for document in documents:
+            doc_id = self._get_next_id()
+            table_data[str(doc_id)] = document
+            doc_ids.append(doc_id)
+        self._update_table(lambda data: data.update(table_data))
         self.clear_cache()
         return doc_ids
 
@@ -128,9 +125,10 @@ class Table:
         if cond in self._query_cache:
             return self._query_cache[cond]
 
+        table_data = self._read_table()
         docs = [
             self.document_class(doc, self.document_id_class(int(doc_id)))
-            for doc_id, doc in self._read_table().items()
+            for doc_id, doc in table_data.items()
             if cond(doc)
         ]
 
@@ -346,10 +344,8 @@ class Table:
         """Return the ID for a newly inserted document."""
         table = self._read_table()
         if table:
-            self._next_id = max(int(k) for k in table.keys()) + 1
-        else:
-            self._next_id = 1
-        return self._next_id
+            return max(int(k) for k in table.keys()) + 1
+        return 1
 
     def _read_table(self) -> Dict[str, Mapping]:
         """Read the table data from the underlying storage.

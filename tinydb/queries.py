@@ -399,7 +399,7 @@ class Query(QueryInstance):
         """
         query = type(self)()
         query._path = self._path + (fn,)
-        query._hash = ("map", query._path) if self.is_cacheable() else None
+        query._hash = None  # Make map queries non-cacheable
         return query
 
     def fragment(self, fragment: Mapping) -> "QueryInstance":
