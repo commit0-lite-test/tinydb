@@ -22,6 +22,12 @@ class TinyDB(TableBase):
         self._tables: Dict[str, Table] = {}
         self._default_table: Optional[Table] = None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def __getattr__(self, name: str) -> Any:
         """Forward all unknown attribute calls to the default table instance."""
         if name in self.__dict__:

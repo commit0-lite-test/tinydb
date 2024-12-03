@@ -62,6 +62,10 @@ class Table:
     query_cache_class = LRUCache
     default_query_cache_capacity = 10
 
+    def __len__(self):
+        """Return the number of stored documents."""
+        return len(self._read_table())
+
     def __init__(
         self,
         storage: Storage,
@@ -117,7 +121,7 @@ class Table:
     def all(self) -> List[Document]:
         """Get all documents stored in the table."""
         return [
-            self.document_class(doc, self.document_id_class(doc_id))
+            self.document_class(doc, self.document_id_class(int(doc_id)))
             for doc_id, doc in self._read_table().items()
         ]
 
@@ -137,6 +141,13 @@ class Table:
             self._query_cache[cond] = docs
 
         return docs
+
+    def _get_next_id(self) -> int:
+        """Return the ID for a newly inserted document."""
+        table = self._read_table()
+        if table:
+            return max(int(k) for k in table.keys()) + 1
+        return 1
 
     def get(
         self,
